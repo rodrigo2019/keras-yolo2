@@ -42,7 +42,11 @@ Dataset => http://cvrr.ucsd.edu/vivachallenge/index.php/hands/hand-detection/
 
 ### 0. Requirement
 
-python 2.7
+python 2.7 or python 3.x
+
+opencv
+
+tqdm
 
 keras >= 2.0.8
 
@@ -76,7 +80,11 @@ The configuration file is a json file, which looks like this:
         "labels":               ["raccoon"]
     },
 
+    "parser_annotation_type":    "xml",
+
     "train": {
+        "train_csv_file":       "",
+        "train_csv_base_path":  "",
         "train_image_folder":   "/home/andy/data/raccoon_dataset/images/",
         "train_annot_folder":   "/home/andy/data/raccoon_dataset/anns/",      
           
@@ -96,6 +104,8 @@ The configuration file is a json file, which looks like this:
     },
 
     "valid": {
+        "valid_csv_file":       "",
+        "valid_csv_base_path":  "",
         "valid_image_folder":   "",
         "valid_annot_folder":   "",
 
@@ -136,6 +146,17 @@ By the end of this process, the code will write the weights of the best model to
 
 It carries out detection on the image and write the image with detected bounding boxes to the same folder.
 
+## Using CSV files
+ the CSV files must be used in this way
+ ```
+    file_path,xMin,yMin,xMax,yMax,objectCLass    
+ ```
+ example:
+ ```
+    image.jpg,121,201,302,509,dog
+ ```
+
+ ``` train_csv_base_path``` is a base path for your directory that contains the images in the csv file, and not the base path for your CSV file, it is usefull to keep just the relative path in the csv file
 ## Usage for jupyter notebook
 
 Refer to the notebook (https://github.com/experiencor/basic-yolo-keras/blob/master/Yolo%20Step-by-Step.ipynb) for a complete walk-through implementation of YOLOv2 from scratch (training, testing, and scoring).

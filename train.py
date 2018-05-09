@@ -3,7 +3,7 @@
 import argparse
 import os
 import numpy as np
-from preprocessing import parse_annotation
+from preprocessing import parse_annotation, parse_annotation_csv
 from frontend import YOLO
 import json
 
@@ -28,17 +28,39 @@ def _main_(args):
     #   Parse the annotations 
     ###############################
 
-    # parse annotations of the training set
-    train_imgs, train_labels = parse_annotation(config['train']['train_annot_folder'], 
-                                                config['train']['train_image_folder'], 
-                                                config['model']['labels'])
-
-    # parse annotations of the validation set, if any, otherwise split the training set
-    if os.path.exists(config['valid']['valid_annot_folder']):
-        valid_imgs, valid_labels = parse_annotation(config['valid']['valid_annot_folder'], 
-                                                    config['valid']['valid_image_folder'], 
+    if config['parser_annotation_type'] == 'xml':
+        # parse annotations of the training set
+        train_imgs, train_labels = parse_annotation(config['train']['train_annot_folder'], 
+                                                    config['train']['train_image_folder'], 
                                                     config['model']['labels'])
+
+        # parse annotations of the validation set, if any, otherwise split the training set
+        if os.path.exists(config['valid']['valid_annot_folder']):
+            valid_imgs, valid_labels = parse_annotation(config['valid']['valid_annot_folder'], 
+                                                        config['valid']['valid_image_folder'], 
+                                                        config['model']['labels'])
+            split = False
+        else:
+            split = True
+    elif config['parser_annotation_type'] == 'csv':
+        # parse annotations of the training set
+        train_imgs, train_labels = parse_annotation_csv(config['train']['train_csv_file'],
+                                                        config['model']['labels'],
+                                                        config['train']['train_csv_base_path'])
+
+        # parse annotations of the validation set, if any, otherwise split the training set
+        if os.path.exists(config['valid']['valid_csv_file']):
+            valid_imgs, valid_labels = parse_annotation_csv(config['valid']['valid_csv_file'],
+                                                        config['model']['labels'],
+                                                        config['valid']['valid_csv_base_path'])
+            split = False
+        else:
+            split = True
     else:
+        raise ValueError("'parser_annotations_type' must be 'xml' or 'csv' not {}.".format(config['parser_annotations_type']))
+
+    
+    if split:
         train_valid_split = int(0.8*len(train_imgs))
         np.random.shuffle(train_imgs)
 
@@ -58,6 +80,8 @@ def _main_(args):
     else:
         print('No labels are provided. Train on all seen labels.')
         config['model']['labels'] = train_labels.keys()
+        with open("labels.json", 'w') as outfile:
+            json.dump({"labels" : list(train_labels.keys())},outfile)
         
     ###############################
     #   Construct the model 
