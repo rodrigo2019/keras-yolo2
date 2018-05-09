@@ -209,7 +209,14 @@ class BatchGenerator(Sequence):
         return np.array(annots)
 
     def load_image(self, i):
-        return cv2.imread(self.images[i]['filename'])
+        if self.config['IMAGE_C'] == 1:
+            image = cv2.imread(self.images[i]['filename'], cv2.IMREAD_GRAYSCALE)
+            image = image[:,:,np.newaxis]
+        elif self.config['IMAGE_C'] == 3:
+            image = cv2.imread(self.images[i]['filename'])
+        else:
+            raise ValueError("Invalid number of image channels.")
+        return image
 
     def __getitem__(self, idx):
         l_bound = idx*self.config['BATCH_SIZE']
@@ -220,8 +227,11 @@ class BatchGenerator(Sequence):
             l_bound = r_bound - self.config['BATCH_SIZE']
 
         instance_count = 0
+        if self.config['IMAGE_C'] == 3:
+            x_batch = np.zeros((r_bound - l_bound, self.config['IMAGE_H'], self.config['IMAGE_W'], 3))                         # input images
+        else:
+            x_batch = np.zeros((r_bound - l_bound, self.config['IMAGE_H'], self.config['IMAGE_W'], 1))
 
-        x_batch = np.zeros((r_bound - l_bound, self.config['IMAGE_H'], self.config['IMAGE_W'], 3))                         # input images
         b_batch = np.zeros((r_bound - l_bound, 1     , 1     , 1    ,  self.config['TRUE_BOX_BUFFER'], 4))   # list of self.config['TRUE_self.config['BOX']_BUFFER'] GT boxes
         y_batch = np.zeros((r_bound - l_bound, self.config['GRID_H'],  self.config['GRID_W'], self.config['BOX'], 4+1+len(self.config['LABELS'])))                # desired network output
 
@@ -292,6 +302,7 @@ class BatchGenerator(Sequence):
                                     (0,255,0), 2)
                         
                 x_batch[instance_count] = img
+            
 
             # increase instance counter in current batch
             instance_count += 1  
@@ -305,11 +316,17 @@ class BatchGenerator(Sequence):
 
     def aug_image(self, train_instance, jitter):
         image_name = train_instance['filename']
-        image = cv2.imread(image_name)
+        if self.config['IMAGE_C'] == 1:
+            image = cv2.imread(image_name, cv2.IMREAD_GRAYSCALE)
+        elif self.config['IMAGE_C'] == 3:
+            image = cv2.imread(image_name)
+        else:
+            raise ValueError("Invalid number of image channels.")
 
         if image is None: print('Cannot find ', image_name)
 
-        h, w, c = image.shape
+        h = image.shape[0]
+        w = image.shape[1]
         all_objs = copy.deepcopy(train_instance['object'])
 
         if jitter:
@@ -333,6 +350,7 @@ class BatchGenerator(Sequence):
             
         # resize the image to standard size
         image = cv2.resize(image, (self.config['IMAGE_H'], self.config['IMAGE_W']))
+        if self.config['IMAGE_C'] == 1: image = image[:,:,np.newaxis]
         image = image[:,:,::-1]
 
         # fix object's position and size
@@ -353,5 +371,4 @@ class BatchGenerator(Sequence):
                 xmin = obj['xmin']
                 obj['xmin'] = self.config['IMAGE_W'] - obj['xmax']
                 obj['xmax'] = self.config['IMAGE_W'] - xmin
-                
         return image, all_objs

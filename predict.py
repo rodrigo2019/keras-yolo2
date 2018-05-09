@@ -72,7 +72,8 @@ def _main_(args):
                 input_size          = config['model']['input_size'], 
                 labels              = config['model']['labels'], 
                 max_box_per_image   = config['model']['max_box_per_image'],
-                anchors             = config['model']['anchors'])
+                anchors             = config['model']['anchors'],
+                gray_mode           = config['model']['gray_mode'])
 
     ###############################
     #   Load trained weights

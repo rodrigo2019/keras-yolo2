@@ -2,6 +2,7 @@
     "model" : {
         "backend":              "./examples/custom_backend.SuperTinyYoloFeature",
         "input_size":           416,
+        "gray_mode":            true,
         "anchors":              [0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828],
         "max_box_per_image":    10,        
         "labels":               []
@@ -19,7 +20,7 @@
         "pretrained_weights":   "",
         "batch_size":           4,
         "learning_rate":        1e-4,
-        "nb_epochs":            1,
+        "nb_epochs":            50,
         "warmup_epochs":        3,
 
         "object_scale":         5.0 ,
