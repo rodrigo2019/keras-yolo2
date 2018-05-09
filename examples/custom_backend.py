@@ -15,7 +15,7 @@ class SuperTinyYoloFeature(BaseFeatureExtractor):
     grid size
     """
     def __init__(self, input_size):
-        input_image = Input(shape=(input_size, input_size, 3))
+        input_image = Input(shape=input_size)
 
         # Layer 1
         x = Conv2D(1, (3,3), strides=(1,1), padding='same', name='conv_1', use_bias=False)(input_image)
