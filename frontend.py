@@ -255,7 +255,11 @@ class YOLO(object):
                     coord_scale,
                     class_scale,
                     saved_weights_name='best_weights.h5',
-                    debug=False):     
+                    debug=False,
+                    workers=3,
+                    max_queue_size=8,
+                    early_stop=True,
+                    custom_callback=[]):     
 
         self.batch_size = batch_size
 
@@ -304,23 +308,28 @@ class YOLO(object):
         # Make a few callbacks
         ############################################
 
-        early_stop = EarlyStopping(monitor='val_loss', 
+        early_stop_cb = EarlyStopping(monitor='val_loss', 
                            min_delta=0.001, 
                            patience=3, 
                            mode='min', 
                            verbose=1)
-        checkpoint = ModelCheckpoint(saved_weights_name, 
+        checkpoint_cb = ModelCheckpoint(saved_weights_name, 
                                      monitor='val_loss', 
                                      verbose=1, 
                                      save_best_only=True, 
                                      mode='min', 
                                      period=1)
-        tensorboard = TensorBoard(log_dir=os.path.expanduser('~/logs/'), 
+        tensorboard_cb = TensorBoard(log_dir=os.path.expanduser('~/logs/'), 
                                   histogram_freq=0, 
                                   #write_batch_performance=True,
                                   write_graph=True, 
                                   write_images=False)
 
+        if not isinstance(custom_callback,list):
+            custom_callback = [custom_callback]
+        callbacks = [checkpoint_cb, tensorboard_cb] + custom_callback
+        if early_stop: callbacks.append(early_stop_cb)
+        
         ############################################
         # Start the training process
         ############################################        
@@ -331,9 +340,9 @@ class YOLO(object):
                                  verbose          = 2 if debug else 1,
                                  validation_data  = valid_generator,
                                  validation_steps = len(valid_generator) * valid_times,
-                                 callbacks        = [early_stop, checkpoint, tensorboard], 
-                                 workers          = 3,
-                                 max_queue_size   = 8)      
+                                 callbacks        = callbacks, 
+                                 workers          = workers,
+                                 max_queue_size   = max_queue_size)      
 
         ############################################
         # Compute mAP on the validation set
