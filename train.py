@@ -119,7 +119,10 @@ def _main_(args):
                coord_scale        = config['train']['coord_scale'],
                class_scale        = config['train']['class_scale'],
                saved_weights_name = config['train']['saved_weights_name'],
-               debug              = config['train']['debug'])
+               debug              = config['train']['debug'],
+               early_stop         = config['train']['early_stop'],
+               workers            = config['train']['workers'],
+               max_queue_size     = config['train']['max_queue_size'])
 
 if __name__ == '__main__':
     args = argparser.parse_args()

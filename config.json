@@ -23,6 +23,10 @@
         "nb_epochs":            50,
         "warmup_epochs":        3,
 
+        "workers":              3,
+        "max_queue_size":       8,
+        "early_stop":           true,
+
         "object_scale":         5.0 ,
         "no_object_scale":      1.0,
         "coord_scale":          1.0,

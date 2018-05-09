@@ -163,7 +163,7 @@ class FullYoloFeature(BaseFeatureExtractor):
         x = BatchNormalization(name='norm_22')(x)
         x = LeakyReLU(alpha=0.1)(x)
 
-        self.feature_extractor = Model(input_image, x)  
+        self.feature_extractor = Model(input_image, x, name='Full YOLO backend')  
         if input_size[2] == 3:
             self.feature_extractor.load_weights(FULL_YOLO_BACKEND_PATH)
         else:
@@ -202,12 +202,11 @@ class TinyYoloFeature(BaseFeatureExtractor):
             x = BatchNormalization(name='norm_' + str(i+7))(x)
             x = LeakyReLU(alpha=0.1)(x)
 
-        self.feature_extractor = Model(input_image, x)  
+        self.feature_extractor = Model(input_image, x, name='Tiny YOLO backend')  
         if input_size[2] == 3:
             self.feature_extractor.load_weights(TINY_YOLO_BACKEND_PATH)
         else:
             print('pre trained weights are avaliable just for RGB network.')
-        
 
     def normalize(self, image):
         return image / 255.
@@ -222,7 +221,7 @@ class MobileNetFeature(BaseFeatureExtractor):
 
         x = mobilenet(input_image)
 
-        self.feature_extractor = Model(input_image, x)  
+        self.feature_extractor = Model(input_image, x, name='MobileNet backend')  
 
     def normalize(self, image):
         image = image / 255.
@@ -277,12 +276,11 @@ class SqueezeNetFeature(BaseFeatureExtractor):
         x = fire_module(x, fire_id=8, squeeze=64, expand=256)
         x = fire_module(x, fire_id=9, squeeze=64, expand=256)
 
-        self.feature_extractor = Model(input_image, x)  
+        self.feature_extractor = Model(input_image, x, name='SqueezeNet backend')  
         if input_size[2] == 3:
             self.feature_extractor.load_weights(SQUEEZENET_BACKEND_PATH)
         else:
             print('pre trained weights are avaliable just for RGB network.')
-        
 
     def normalize(self, image):
         image = image[..., ::-1]
@@ -304,7 +302,7 @@ class Inception3Feature(BaseFeatureExtractor):
 
         x = inception(input_image)
 
-        self.feature_extractor = Model(input_image, x)  
+        self.feature_extractor = Model(input_image, x, name='Inception3 backend')  
 
     def normalize(self, image):
         image = image / 255.
