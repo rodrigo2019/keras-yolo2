@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 
 from preprocessing import parse_annotation, parse_annotation_csv
+from utils import import_feature_extractor
 import json
 
 argparser = argparse.ArgumentParser()
@@ -118,10 +119,10 @@ def main(argv):
         train_imgs, train_labels = parse_annotation_csv(config['train']['train_csv_file'],
                                                         config['model']['labels'],
                                                         config['train']['train_csv_base_path'])
-
-
-    grid_w = config['model']['input_size']/32
-    grid_h = config['model']['input_size']/32
+    feature_extractor = import_feature_extractor(config['model']['backend'],
+                                                config['model']['input_size'])
+    grid_w = config['model']['input_size']/feature_extractor.get_output_shape()[1]
+    grid_h = config['model']['input_size']/feature_extractor.get_output_shape()[0]
 
     # run k_mean to find the anchors
     annotation_dims = []

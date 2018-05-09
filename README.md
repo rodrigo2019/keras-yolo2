@@ -146,6 +146,15 @@ By the end of this process, the code will write the weights of the best model to
 
 It carries out detection on the image and write the image with detected bounding boxes to the same folder.
 
+## Using a custom backend
+
+It is possible to use a customizable backend doing a dynamically import
+to do it, change the architecture in the config file, like this:
+```
+"architecture":         "./examples/custom_backend.SuperTinyYoloFeature",
+```
+if your custom_backend file are in the root directory you must use ```./``` in order to indicate that you are using a file instead a known backend
+
 ## Using CSV files
  the CSV files must be used in this way
  ```
