@@ -87,6 +87,10 @@ The configuration file is a json file, which looks like this:
         "nb_epoch":             50,             # number of epoches
         "warmup_epochs":        3,              # the number of initial epochs during which the sizes of the 5 boxes in each cell is forced to match the sizes of the 5 anchors, this trick seems to improve precision emperically
 
+        "workers":              3,
+        "max_queue_size":       8,
+        "early_stop":           true,
+
         "object_scale":         5.0 ,           # determine how much to penalize wrong prediction of confidence of object predictors
         "no_object_scale":      1.0,            # determine how much to penalize wrong prediction of confidence of non-object predictors
         "coord_scale":          1.0,            # determine how much to penalize wrong position and size predictions (x, y, w, h)
