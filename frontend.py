@@ -319,8 +319,10 @@ class YOLO(object):
                                   #write_batch_performance=True,
                                   write_graph=True, 
                                   write_images=False)
-        
-        map_evaluator_cb = self.MAP_evaluation(self, valid_generator)
+        file_name = saved_weights_name.split(".")[0]
+        map_evaluator_cb = self.MAP_evaluation(self, valid_generator,
+                                                save_best=True,
+                                                save_name=saved_weights_name+"_bestMap")
 
         if not isinstance(custom_callback,list):
             custom_callback = [custom_callback]
@@ -363,10 +365,8 @@ class YOLO(object):
             input_image = image[np.newaxis,:,:,np.newaxis]
         
         dummy_array = np.zeros((1,1,1,1,self.max_box_per_image,4))
-        if third_party_model is None:
-            netout = self.model.predict([input_image, dummy_array])[0]
-        else:
-            netout = third_party_model.predict([input_image, dummy_array])[0]
+
+        netout = self.model.predict([input_image, dummy_array])[0]
             
         boxes  = decode_netout(netout, self.anchors, self.nb_class)
 
@@ -392,13 +392,19 @@ class YOLO(object):
                     iou_threshold=0.3,
                     score_threshold=0.3,
                     save_path=None,
-                    period=1):
+                    period=1,
+                    save_best=False,
+                    save_name=None):
             
             self.yolo = yolo
             self.generator = generator
             self.iou_threshold = iou_threshold
             self.save_path = save_path
             self.period = period
+            self.save_best = save_best
+            self.save_name = save_name
+
+            self.bestMap = 0
 
 
         def on_epoch_end(self, epoch, logs={}):
@@ -408,7 +414,14 @@ class YOLO(object):
                 print('\n')
                 for label, average_precision in average_precisions.items():
                     print(self.yolo.labels[label], '{:.4f}'.format(average_precision))
-                print('mAP: {:.4f}'.format(sum(average_precisions.values()) / len(average_precisions))) 
+                mAP = sum(average_precisions.values()) / len(average_precisions)
+                print('mAP: {:.4f}'.format(mAP)) 
+
+                if self.save_best and self.save_name is not None and mAP > self.bestMap:
+                    print("mAP improved from {} to {}, saving model to {}.".format(self.bestMap,mAP,self.save_name))
+                    self.bestMap = mAP
+                    self.model.save(self.save_name)
+
 
         def evaluate(self):
              
@@ -421,7 +434,8 @@ class YOLO(object):
                 raw_height, raw_width, raw_channels = raw_image.shape
 
                 # make the boxes and the labels
-                pred_boxes  = self.yolo.predict(raw_image, self.model)
+                self.yolo.model = self.model
+                pred_boxes  = self.yolo.predict(raw_image)
 
                 
                 score = np.array([box.score for box in pred_boxes])
