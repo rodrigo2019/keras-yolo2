@@ -345,19 +345,29 @@ class YOLO(object):
 
     def predict(self, image, third_party_model=None):
 
-        image_h, image_w, _ = image.shape
-        image = cv2.resize(image, (self.input_size, self.input_size))
+        if len(image.shape) == 3 and self.gray_mode:
+            if image.shape[2] == 3:
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                image = image[:,:,np.newaxis]
+        elif len(image.shape) == 2 and not self.gray_mode:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        elif len(image.shape) == 2:
+            image = image[:,:,np.newaxis]
+
+        image = cv2.resize(image, (self.input_size[1], self.input_size[0]))
         image = self.feature_extractor.normalize(image)
-
-        input_image = image[:,:,::-1]
-        input_image = np.expand_dims(input_image, 0)
+        if len(image.shape) == 3:
+            input_image = image[:,:,::-1]
+            input_image = image[np.newaxis,:]
+        else:
+            input_image = image[np.newaxis,:,:,np.newaxis]
+        
         dummy_array = np.zeros((1,1,1,1,self.max_box_per_image,4))
-
         if third_party_model is None:
             netout = self.model.predict([input_image, dummy_array])[0]
         else:
             netout = third_party_model.predict([input_image, dummy_array])[0]
-
+            
         boxes  = decode_netout(netout, self.anchors, self.nb_class)
 
         return boxes
