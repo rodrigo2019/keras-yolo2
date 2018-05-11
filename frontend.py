@@ -45,7 +45,7 @@ class YOLO(object):
         else:
             self.input_size = (self.input_size, self.input_size, 3)
             input_image     = Input(shape=self.input_size)
-        self.true_boxes = Input(shape=(1, 1, 1, max_box_per_image , 4))  
+        self.true_boxes = Input(shape=(1, 1, 1, max_box_per_image , 4),name="GT_boxes")  
 
         self.feature_extractor = import_feature_extractor(backend, self.input_size)
         
@@ -59,12 +59,13 @@ class YOLO(object):
                         padding='same', 
                         name='DetectionLayer', 
                         kernel_initializer='lecun_normal')(features)
-        output = Reshape((self.grid_h, self.grid_w, self.nb_box, 4 + 1 + self.nb_class))(output)
+        output = Reshape((self.grid_h, self.grid_w, self.nb_box, 4 + 1 + self.nb_class),name="YOLO_output")(output)
         output = Lambda(lambda args: args[0])([output, self.true_boxes])
 
         self.model = Model([input_image, self.true_boxes], output)
-
-        
+        self.model.layers[1].name = "backBone_model"
+        self.model.layers[-1].name = "insert_GT_boxes"
+       
         # initialize the weights of the detection layer
         layer = self.model.layers[-4]
         weights = layer.get_weights()
@@ -372,6 +373,13 @@ class YOLO(object):
 
         return boxes
 
+
+    def get_inference_model(self):
+
+
+        inference_model = Model(self.model.input,
+                                self.model.get_layer("YOLO_output").output)
+        return inference_model
 
     class MAP_evaluation(keras.callbacks.Callback):
         """ Evaluate a given dataset using a given model.
