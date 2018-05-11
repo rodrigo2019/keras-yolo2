@@ -12,6 +12,7 @@ from keras.optimizers import SGD, Adam, RMSprop
 from preprocessing import BatchGenerator
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from backend import TinyYoloFeature, FullYoloFeature, MobileNetFeature, SqueezeNetFeature, Inception3Feature, VGG16Feature, ResNet50Feature
+import keras
 
 class YOLO(object):
     def __init__(self, backend,
@@ -324,10 +325,12 @@ class YOLO(object):
                                   #write_batch_performance=True,
                                   write_graph=True, 
                                   write_images=False)
+        
+        map_evaluator_cb = self.MAP_evaluation(self, valid_generator)
 
         if not isinstance(custom_callback,list):
             custom_callback = [custom_callback]
-        callbacks = [checkpoint_cb, tensorboard_cb] + custom_callback
+        callbacks = [checkpoint_cb, tensorboard_cb, map_evaluator_cb] + custom_callback
         if early_stop: callbacks.append(early_stop_cb)
         
         ############################################
@@ -343,131 +346,11 @@ class YOLO(object):
                                  callbacks        = callbacks, 
                                  workers          = workers,
                                  max_queue_size   = max_queue_size)      
+       
 
-        ############################################
-        # Compute mAP on the validation set
-        ############################################
-        average_precisions = self.evaluate(valid_generator)     
 
-        # print evaluation
-        for label, average_precision in average_precisions.items():
-            print(self.labels[label], '{:.4f}'.format(average_precision))
-        print('mAP: {:.4f}'.format(sum(average_precisions.values()) / len(average_precisions)))         
+    def predict(self, image, third_party_model=None):
 
-    def evaluate(self, 
-                 generator, 
-                 iou_threshold=0.3,
-                 score_threshold=0.3,
-                 max_detections=100,
-                 save_path=None):
-        """ Evaluate a given dataset using a given model.
-        code originally from https://github.com/fizyr/keras-retinanet
-
-        # Arguments
-            generator       : The generator that represents the dataset to evaluate.
-            model           : The model to evaluate.
-            iou_threshold   : The threshold used to consider when a detection is positive or negative.
-            score_threshold : The score confidence threshold to use for detections.
-            max_detections  : The maximum number of detections to use per image.
-            save_path       : The path to save images with visualized detections to.
-        # Returns
-            A dict mapping class names to mAP scores.
-        """    
-        # gather all detections and annotations
-        all_detections     = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
-        all_annotations    = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
-
-        for i in range(generator.size()):
-            raw_image = generator.load_image(i)
-            raw_height, raw_width, raw_channels = raw_image.shape
-
-            # make the boxes and the labels
-            pred_boxes  = self.predict(raw_image)
-
-            
-            score = np.array([box.score for box in pred_boxes])
-            pred_labels = np.array([box.label for box in pred_boxes])        
-            
-            if len(pred_boxes) > 0:
-                pred_boxes = np.array([[box.xmin*raw_width, box.ymin*raw_height, box.xmax*raw_width, box.ymax*raw_height, box.score] for box in pred_boxes])
-            else:
-                pred_boxes = np.array([[]])  
-            
-            # sort the boxes and the labels according to scores
-            score_sort = np.argsort(-score)
-            pred_labels = pred_labels[score_sort]
-            pred_boxes  = pred_boxes[score_sort]
-            
-            # copy detections to all_detections
-            for label in range(generator.num_classes()):
-                all_detections[i][label] = pred_boxes[pred_labels == label, :]
-                
-            annotations = generator.load_annotation(i)
-            
-            # copy detections to all_annotations
-            for label in range(generator.num_classes()):
-                all_annotations[i][label] = annotations[annotations[:, 4] == label, :4].copy()
-                
-        # compute mAP by comparing all detections and all annotations
-        average_precisions = {}
-        
-        for label in range(generator.num_classes()):
-            false_positives = np.zeros((0,))
-            true_positives  = np.zeros((0,))
-            scores          = np.zeros((0,))
-            num_annotations = 0.0
-
-            for i in range(generator.size()):
-                detections           = all_detections[i][label]
-                annotations          = all_annotations[i][label]
-                num_annotations     += annotations.shape[0]
-                detected_annotations = []
-
-                for d in detections:
-                    scores = np.append(scores, d[4])
-
-                    if annotations.shape[0] == 0:
-                        false_positives = np.append(false_positives, 1)
-                        true_positives  = np.append(true_positives, 0)
-                        continue
-
-                    overlaps            = compute_overlap(np.expand_dims(d, axis=0), annotations)
-                    assigned_annotation = np.argmax(overlaps, axis=1)
-                    max_overlap         = overlaps[0, assigned_annotation]
-
-                    if max_overlap >= iou_threshold and assigned_annotation not in detected_annotations:
-                        false_positives = np.append(false_positives, 0)
-                        true_positives  = np.append(true_positives, 1)
-                        detected_annotations.append(assigned_annotation)
-                    else:
-                        false_positives = np.append(false_positives, 1)
-                        true_positives  = np.append(true_positives, 0)
-
-            # no annotations -> AP for this class is 0 (is this correct?)
-            if num_annotations == 0:
-                average_precisions[label] = 0
-                continue
-
-            # sort by score
-            indices         = np.argsort(-scores)
-            false_positives = false_positives[indices]
-            true_positives  = true_positives[indices]
-
-            # compute false positives and true positives
-            false_positives = np.cumsum(false_positives)
-            true_positives  = np.cumsum(true_positives)
-
-            # compute recall and precision
-            recall    = true_positives / num_annotations
-            precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
-
-            # compute average precision
-            average_precision  = compute_ap(recall, precision)  
-            average_precisions[label] = average_precision
-
-        return average_precisions    
-
-    def predict(self, image):
         image_h, image_w, _ = image.shape
         image = cv2.resize(image, (self.input_size, self.input_size))
         image = self.feature_extractor.normalize(image)
@@ -476,7 +359,145 @@ class YOLO(object):
         input_image = np.expand_dims(input_image, 0)
         dummy_array = np.zeros((1,1,1,1,self.max_box_per_image,4))
 
-        netout = self.model.predict([input_image, dummy_array])[0]
+        if third_party_model is None:
+            netout = self.model.predict([input_image, dummy_array])[0]
+        else:
+            netout = third_party_model.predict([input_image, dummy_array])[0]
+
         boxes  = decode_netout(netout, self.anchors, self.nb_class)
 
         return boxes
+
+
+    class MAP_evaluation(keras.callbacks.Callback):
+        """ Evaluate a given dataset using a given model.
+            code originally from https://github.com/fizyr/keras-retinanet
+
+            # Arguments
+                generator       : The generator that represents the dataset to evaluate.
+                model           : The model to evaluate.
+                iou_threshold   : The threshold used to consider when a detection is positive or negative.
+                score_threshold : The score confidence threshold to use for detections.
+                save_path       : The path to save images with visualized detections to.
+            # Returns
+                A dict mapping class names to mAP scores.
+        """   
+        def __init__(self,
+                    yolo,
+                    generator, 
+                    iou_threshold=0.3,
+                    score_threshold=0.3,
+                    save_path=None,
+                    period=1):
+            
+            self.yolo = yolo
+            self.generator = generator
+            self.iou_threshold = iou_threshold
+            self.save_path = save_path
+            self.period = period
+
+
+        def on_epoch_end(self, epoch, logs={}):
+
+            if epoch % self.period == 0 and self.period != 0:
+                average_precisions = self.evaluate()
+                print('\n')
+                for label, average_precision in average_precisions.items():
+                    print(self.yolo.labels[label], '{:.4f}'.format(average_precision))
+                print('mAP: {:.4f}'.format(sum(average_precisions.values()) / len(average_precisions))) 
+
+        def evaluate(self):
+             
+            # gather all detections and annotations
+            all_detections     = [[None for i in range(self.generator.num_classes())] for j in range(self.generator.size())]
+            all_annotations    = [[None for i in range(self.generator.num_classes())] for j in range(self.generator.size())]
+
+            for i in range(self.generator.size()):
+                raw_image = self.generator.load_image(i)
+                raw_height, raw_width, raw_channels = raw_image.shape
+
+                # make the boxes and the labels
+                pred_boxes  = self.yolo.predict(raw_image, self.model)
+
+                
+                score = np.array([box.score for box in pred_boxes])
+                pred_labels = np.array([box.label for box in pred_boxes])        
+                
+                if len(pred_boxes) > 0:
+                    pred_boxes = np.array([[box.xmin*raw_width, box.ymin*raw_height, box.xmax*raw_width, box.ymax*raw_height, box.score] for box in pred_boxes])
+                else:
+                    pred_boxes = np.array([[]])  
+                
+                # sort the boxes and the labels according to scores
+                score_sort = np.argsort(-score)
+                pred_labels = pred_labels[score_sort]
+                pred_boxes  = pred_boxes[score_sort]
+                
+                # copy detections to all_detections
+                for label in range(self.generator.num_classes()):
+                    all_detections[i][label] = pred_boxes[pred_labels == label, :]
+                    
+                annotations = self.generator.load_annotation(i)
+                
+                # copy detections to all_annotations
+                for label in range(self.generator.num_classes()):
+                    all_annotations[i][label] = annotations[annotations[:, 4] == label, :4].copy()
+                    
+            # compute mAP by comparing all detections and all annotations
+            average_precisions = {}
+            
+            for label in range(self.generator.num_classes()):
+                false_positives = np.zeros((0,))
+                true_positives  = np.zeros((0,))
+                scores          = np.zeros((0,))
+                num_annotations = 0.0
+
+                for i in range(self.generator.size()):
+                    detections           = all_detections[i][label]
+                    annotations          = all_annotations[i][label]
+                    num_annotations     += annotations.shape[0]
+                    detected_annotations = []
+
+                    for d in detections:
+                        scores = np.append(scores, d[4])
+
+                        if annotations.shape[0] == 0:
+                            false_positives = np.append(false_positives, 1)
+                            true_positives  = np.append(true_positives, 0)
+                            continue
+
+                        overlaps            = compute_overlap(np.expand_dims(d, axis=0), annotations)
+                        assigned_annotation = np.argmax(overlaps, axis=1)
+                        max_overlap         = overlaps[0, assigned_annotation]
+
+                        if max_overlap >= self.iou_threshold and assigned_annotation not in detected_annotations:
+                            false_positives = np.append(false_positives, 0)
+                            true_positives  = np.append(true_positives, 1)
+                            detected_annotations.append(assigned_annotation)
+                        else:
+                            false_positives = np.append(false_positives, 1)
+                            true_positives  = np.append(true_positives, 0)
+
+                # no annotations -> AP for this class is 0 (is this correct?)
+                if num_annotations == 0:
+                    average_precisions[label] = 0
+                    continue
+
+                # sort by score
+                indices         = np.argsort(-scores)
+                false_positives = false_positives[indices]
+                true_positives  = true_positives[indices]
+
+                # compute false positives and true positives
+                false_positives = np.cumsum(false_positives)
+                true_positives  = np.cumsum(true_positives)
+
+                # compute recall and precision
+                recall    = true_positives / num_annotations
+                precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
+
+                # compute average precision
+                average_precision  = compute_ap(recall, precision)  
+                average_precisions[label] = average_precision
+
+            return average_precisions    
