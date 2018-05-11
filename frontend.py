@@ -421,10 +421,12 @@ class YOLO(object):
                     print("mAP improved from {} to {}, saving model to {}.".format(self.bestMap,mAP,self.save_name))
                     self.bestMap = mAP
                     self.model.save(self.save_name)
-
+                else:
+                    print("mAP did not improve from {}.".format(self.bestMap))
 
         def evaluate(self):
              
+            self.yolo.model = self.model
             # gather all detections and annotations
             all_detections     = [[None for i in range(self.generator.num_classes())] for j in range(self.generator.size())]
             all_annotations    = [[None for i in range(self.generator.num_classes())] for j in range(self.generator.size())]
@@ -434,9 +436,7 @@ class YOLO(object):
                 raw_height, raw_width, raw_channels = raw_image.shape
 
                 # make the boxes and the labels
-                self.yolo.model = self.model
                 pred_boxes  = self.yolo.predict(raw_image)
-
                 
                 score = np.array([box.score for box in pred_boxes])
                 pred_labels = np.array([box.label for box in pred_boxes])        
