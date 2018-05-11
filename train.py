@@ -6,6 +6,8 @@ import numpy as np
 from preprocessing import parse_annotation, parse_annotation_csv
 from frontend import YOLO
 import json
+import keras
+import tensorflow as tf
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
@@ -18,8 +20,15 @@ argparser.add_argument(
     '--conf',
     help='path to configuration file')
 
+def get_session(): #edita a sessão padrão do tensorflow para que a memoria da placa seja consumida de acordo com a demanda
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    return tf.Session(config=config)
+
 def _main_(args):
     config_path = args.conf
+    
+    keras.backend.tensorflow_backend.set_session(get_session())
 
     with open(config_path) as config_buffer:    
         config = json.loads(config_buffer.read())
