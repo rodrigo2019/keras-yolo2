@@ -254,7 +254,8 @@ class YOLO(object):
                     workers=3,
                     max_queue_size=8,
                     early_stop=True,
-                    custom_callback=[]):     
+                    custom_callback=[],
+                    tb_logdir="./"):     
 
         self.batch_size = batch_size
 
@@ -315,7 +316,7 @@ class YOLO(object):
                                      save_best_only=True, 
                                      mode='min', 
                                      period=1)
-        tensorboard_cb = TensorBoard(log_dir=os.path.expanduser('~/logs/'), 
+        tensorboard_cb = TensorBoard(log_dir=tb_logdir, 
                                   histogram_freq=0, 
                                   #write_batch_performance=True,
                                   write_graph=True, 

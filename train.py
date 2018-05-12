@@ -131,7 +131,8 @@ def _main_(args):
                debug              = config['train']['debug'],
                early_stop         = config['train']['early_stop'],
                workers            = config['train']['workers'],
-               max_queue_size     = config['train']['max_queue_size'])
+               max_queue_size     = config['train']['max_queue_size'],
+               tb_logdir          = config['train']['tensorboar_log_dir'])
 
 if __name__ == '__main__':
     args = argparser.parse_args()

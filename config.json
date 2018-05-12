@@ -26,6 +26,7 @@
         "workers":              3,
         "max_queue_size":       8,
         "early_stop":           true,
+        "tensorboard_log_dir":  "~/logs",
 
         "object_scale":         5.0 ,
         "no_object_scale":      1.0,
