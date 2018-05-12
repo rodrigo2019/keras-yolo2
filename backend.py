@@ -163,7 +163,7 @@ class FullYoloFeature(BaseFeatureExtractor):
         x = BatchNormalization(name='norm_22')(x)
         x = LeakyReLU(alpha=0.1)(x)
 
-        self.feature_extractor = Model(input_image, x, name='Full YOLO backend')  
+        self.feature_extractor = Model(input_image, x, name='Full_YOLO_backend')  
         if input_size[2] == 3:
             self.feature_extractor.load_weights(FULL_YOLO_BACKEND_PATH)
         else:
@@ -202,7 +202,7 @@ class TinyYoloFeature(BaseFeatureExtractor):
             x = BatchNormalization(name='norm_' + str(i+7))(x)
             x = LeakyReLU(alpha=0.1)(x)
 
-        self.feature_extractor = Model(input_image, x, name='Tiny YOLO backend')  
+        self.feature_extractor = Model(input_image, x, name='Tiny_YOLO_backend')  
         if input_size[2] == 3:
             self.feature_extractor.load_weights(TINY_YOLO_BACKEND_PATH)
         else:
@@ -221,7 +221,7 @@ class MobileNetFeature(BaseFeatureExtractor):
 
         x = mobilenet(input_image)
 
-        self.feature_extractor = Model(input_image, x, name='MobileNet backend')  
+        self.feature_extractor = Model(input_image, x, name='MobileNet_backend')  
 
     def normalize(self, image):
         image = image / 255.
@@ -276,7 +276,7 @@ class SqueezeNetFeature(BaseFeatureExtractor):
         x = fire_module(x, fire_id=8, squeeze=64, expand=256)
         x = fire_module(x, fire_id=9, squeeze=64, expand=256)
 
-        self.feature_extractor = Model(input_image, x, name='SqueezeNet backend')  
+        self.feature_extractor = Model(input_image, x, name='SqueezeNet_backend')  
         if input_size[2] == 3:
             self.feature_extractor.load_weights(SQUEEZENET_BACKEND_PATH)
         else:
@@ -302,7 +302,7 @@ class Inception3Feature(BaseFeatureExtractor):
 
         x = inception(input_image)
 
-        self.feature_extractor = Model(input_image, x, name='Inception3 backend')  
+        self.feature_extractor = Model(input_image, x, name='Inception3_backend')  
 
     def normalize(self, image):
         image = image / 255.

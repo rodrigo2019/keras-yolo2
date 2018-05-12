@@ -40,10 +40,10 @@ class YOLO(object):
 
         # make the feature extractor layers
         if self.gray_mode:
-            self.input_size = (self.input_size, self.input_size, 1)
+            self.input_size = (self.input_size[0], self.input_size[1], 1)
             input_image     = Input(shape=self.input_size)
         else:
-            self.input_size = (self.input_size, self.input_size, 3)
+            self.input_size = (self.input_size[0], self.input_size[1], 3)
             input_image     = Input(shape=self.input_size)
         self.true_boxes = Input(shape=(1, 1, 1, max_box_per_image , 4),name="GT_boxes")  
 
@@ -81,10 +81,8 @@ class YOLO(object):
     def custom_loss(self, y_true, y_pred):
         mask_shape = tf.shape(y_true)[:4]
         
-        cell_x = tf.to_float(tf.reshape(tf.tile(tf.range(self.grid_w), [self.grid_h]), (1, self.grid_h, self.grid_w, 1, 1)))
-        cell_y = tf.transpose(cell_x, (0,2,1,3,4))
-
-        cell_grid = tf.tile(tf.concat([cell_x,cell_y], -1), [self.batch_size, 1, 1, self.nb_box, 1])
+        cell_xy = tf.to_float(tf.reshape(tf.tile(tf.range(self.grid_w), [self.grid_h]), (1, self.grid_h, self.grid_w, 1, 1)))
+        cell_grid = tf.tile(cell_xy, [self.batch_size, 1, 1, self.nb_box, 2])
         
         coord_mask = tf.zeros(mask_shape)
         conf_mask  = tf.zeros(mask_shape)
@@ -92,7 +90,7 @@ class YOLO(object):
         
         seen = tf.Variable(0.)
         total_recall = tf.Variable(0.)
-        
+
         """
         Adjust prediction
         """

@@ -349,7 +349,7 @@ class BatchGenerator(Sequence):
             image = self.aug_pipe.augment_image(image)            
             
         # resize the image to standard size
-        image = cv2.resize(image, (self.config['IMAGE_H'], self.config['IMAGE_W']))
+        image = cv2.resize(image, (self.config['IMAGE_W'], self.config['IMAGE_H']))
         if self.config['IMAGE_C'] == 1: image = image[:,:,np.newaxis]
         image = image[:,:,::-1]
 

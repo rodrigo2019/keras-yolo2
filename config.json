@@ -1,8 +1,9 @@
 {
     "model" : {
-        "backend":              "./examples/custom_backend.SuperTinyYoloFeature",
-        "input_size":           416,
-        "gray_mode":            true,
+        "backend":              "Tiny Yolo",
+        "input_size_w":         416,
+        "input_size_h":         416,
+        "gray_mode":            false,
         "anchors":              [0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828],
         "max_box_per_image":    10,        
         "labels":               []
@@ -12,28 +13,28 @@
 
     "train": {
         "train_csv_file":       "train.txt",
-        "train_csv_base_path":   "",
-        "train_image_folder":   "D:/Repositorios/raccoon_dataset/images/",
-        "train_annot_folder":   "D:/Repositorios/raccoon_dataset/annotations/",     
+        "train_csv_base_path":  "",
+        "train_image_folder":   "",
+        "train_annot_folder":   "",     
           
         "train_times":          8,
         "pretrained_weights":   "",
         "batch_size":           4,
         "learning_rate":        1e-4,
-        "nb_epochs":            50,
+        "nb_epochs":            150,
         "warmup_epochs":        3,
 
-        "workers":              3,
-        "max_queue_size":       8,
+        "workers":              12,
+        "max_queue_size":       40,
         "early_stop":           true,
-        "tensorboard_log_dir":  "~/logs",
+        "tensorboard_log_dir":  "./logs/1",
 
         "object_scale":         5.0 ,
         "no_object_scale":      1.0,
         "coord_scale":          1.0,
         "class_scale":          1.0,
 
-        "saved_weights_name":   "full_yolo_kangaroo.h5",
+        "saved_weights_name":   "../SuperTinyYolo_plateArea32x32.h5",
         "debug":                false
     },
 

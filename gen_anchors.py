@@ -119,11 +119,11 @@ def main(argv):
         train_imgs, train_labels = parse_annotation_csv(config['train']['train_csv_file'],
                                                         config['model']['labels'],
                                                         config['train']['train_csv_base_path'])
-    input_size = (config['model']['input_size'],config['model']['input_size'],1)
+    input_size = (config['model']['input_size_h'],config['model']['input_size_w'],1)
     feature_extractor = import_feature_extractor(config['model']['backend'],
                                                 input_size)
-    grid_w = config['model']['input_size']/feature_extractor.get_output_shape()[1]
-    grid_h = config['model']['input_size']/feature_extractor.get_output_shape()[0]
+    grid_w = config['model']['input_size_w']/feature_extractor.get_output_shape()[1]
+    grid_h = config['model']['input_size_h']/feature_extractor.get_output_shape()[0]
 
     # run k_mean to find the anchors
     annotation_dims = []
