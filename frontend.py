@@ -321,10 +321,11 @@ class YOLO(object):
                                   #write_batch_performance=True,
                                   write_graph=True, 
                                   write_images=False)
-        file_name = saved_weights_name.split(".")[0]
+
+        root, ext = os.path.splitext(saved_weights_name)
         map_evaluator_cb = self.MAP_evaluation(self, valid_generator,
                                                 save_best=True,
-                                                save_name=saved_weights_name+"_bestMap")
+                                                save_name=root+"_bestMap"+ext)
 
         if not isinstance(custom_callback,list):
             custom_callback = [custom_callback]
