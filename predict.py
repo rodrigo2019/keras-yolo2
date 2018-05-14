@@ -19,11 +19,13 @@ argparser = argparse.ArgumentParser(
 argparser.add_argument(
     '-c',
     '--conf',
+    default='config.json',
     help='path to configuration file')
 
 argparser.add_argument(
     '-w',
     '--weights',
+    default='',
     help='path to pretrained weights')
 
 argparser.add_argument(
@@ -60,6 +62,9 @@ def _main_(args):
     config_path  = args.conf
     weights_path = args.weights
     image_path   = args.input
+
+    if weights_path == '':
+        weights_path = config['train']['saved_weights_name']
 
     with open(config_path) as config_buffer:    
         config = json.load(config_buffer)

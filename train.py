@@ -18,9 +18,10 @@ argparser = argparse.ArgumentParser(
 argparser.add_argument(
     '-c',
     '--conf',
+    default='config.json',
     help='path to configuration file')
 
-def get_session(): #edita a sessão padrão do tensorflow para que a memoria da placa seja consumida de acordo com a demanda
+def get_session():
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     return tf.Session(config=config)
