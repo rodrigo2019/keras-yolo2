@@ -7,9 +7,9 @@ This repo contains the implementation of YOLOv2 in Keras with Tensorflow backend
 - [x] Raccoon detection, Self-driving car, and Kangaroo detection
 - [x] SqueezeNet, MobileNet, InceptionV3, and ResNet50 backends
 - [x] Support python 2.7 and 3.6
+- [x] mAP Evaluation
 - [ ] Multiple-GPU training
 - [ ] Multiscale training
-- [ ] mAP Evaluation
 
 ## Some example applications (click for videos):
 
