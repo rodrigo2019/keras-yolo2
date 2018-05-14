@@ -324,7 +324,8 @@ class YOLO(object):
         root, ext = os.path.splitext(saved_weights_name)
         map_evaluator_cb = self.MAP_evaluation(self, valid_generator,
                                                 save_best=True,
-                                                save_name=root+"_bestMap"+ext)
+                                                save_name=root+"_bestMap"+ext,
+                                                tensorboard=tensorboard_cb)
 
         if not isinstance(custom_callback,list):
             custom_callback = [custom_callback]
@@ -403,7 +404,8 @@ class YOLO(object):
                     save_path=None,
                     period=1,
                     save_best=False,
-                    save_name=None):
+                    save_name=None,
+                    tensorboard=None):
             
             self.yolo = yolo
             self.generator = generator
@@ -412,8 +414,12 @@ class YOLO(object):
             self.period = period
             self.save_best = save_best
             self.save_name = save_name
+            self.tensorboard = tensorboard
 
             self.bestMap = 0
+
+            if not isinstance(self.tensorboard,keras.callbacks.TensorBoard) and self.tensorboard is not None:
+                raise ValueError("Tensorboard object must be a instance from keras.callbacks.TensorBoard")
 
 
         def on_epoch_end(self, epoch, logs={}):
@@ -432,6 +438,14 @@ class YOLO(object):
                     self.model.save(self.save_name)
                 else:
                     print("mAP did not improve from {}.".format(self.bestMap))
+
+                if self.tensorboard is not None and self.tensorboard.writer is not None:
+                    import tensorflow as tf
+                    summary = tf.Summary()
+                    summary_value = summary.value.add()
+                    summary_value.simple_value = mAP
+                    summary_value.tag = "val_mAP"
+                    self.tensorboard.writer.add_summary(summary, epoch)
 
         def evaluate(self):
              
