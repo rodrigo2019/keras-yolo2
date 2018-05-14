@@ -74,7 +74,8 @@ The configuration file is a json file, which looks like this:
 {
     "model" : {
         "architecture":         "Full Yolo",    # "Tiny Yolo" or "Full Yolo" or "MobileNet" or "SqueezeNet" or "Inception3"
-        "input_size":           416,
+        "input_size_w":         448,
+        "input_size_h":         448,
         "anchors":              [0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828],
         "max_box_per_image":    10,        
         "labels":               ["raccoon"]
@@ -98,6 +99,7 @@ The configuration file is a json file, which looks like this:
         "workers":              3,
         "max_queue_size":       8,
         "early_stop":           true,
+        "tensorboard_log_dir":  "./logs/example",
 
         "object_scale":         5.0 ,           # determine how much to penalize wrong prediction of confidence of object predictors
         "no_object_scale":      1.0,            # determine how much to penalize wrong prediction of confidence of non-object predictors
@@ -160,6 +162,11 @@ to do it, change the architecture in the config file, like this:
 if your custom_backend file are in the root directory you must use ```./``` in order to indicate that you are using a file instead a known backend
 
 ## Using CSV files
+first change the option ```xml``` to ```csv``` in this line on json file:
+```
+"parser_annotation_type":    "csv",
+```
+
  the CSV files must be used in this way
  ```
     file_path,xMin,yMin,xMax,yMax,objectCLass    
