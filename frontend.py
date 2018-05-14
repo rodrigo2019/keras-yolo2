@@ -60,11 +60,9 @@ class YOLO(object):
                         name='DetectionLayer', 
                         kernel_initializer='lecun_normal')(features)
         output = Reshape((self.grid_h, self.grid_w, self.nb_box, 4 + 1 + self.nb_class),name="YOLO_output")(output)
-        output = Lambda(lambda args: args[0])([output, self.true_boxes])
+        output = Lambda(lambda args: args[0], name="Insert_GT_Boxes")([output, self.true_boxes])
 
         self.model = Model([input_image, self.true_boxes], output)
-        self.model.layers[1].name = "backBone_model"
-        self.model.layers[-1].name = "insert_GT_boxes"
        
         # initialize the weights of the detection layer
         layer = self.model.layers[-4]
@@ -81,8 +79,11 @@ class YOLO(object):
     def custom_loss(self, y_true, y_pred):
         mask_shape = tf.shape(y_true)[:4]
         
-        cell_xy = tf.to_float(tf.reshape(tf.tile(tf.range(self.grid_w), [self.grid_h]), (1, self.grid_h, self.grid_w, 1, 1)))
-        cell_grid = tf.tile(cell_xy, [self.batch_size, 1, 1, self.nb_box, 2])
+        cell_x = tf.to_float(tf.reshape(tf.tile(tf.range(self.grid_w), [self.grid_h]), (1, self.grid_h, self.grid_w, 1, 1))) 
+        cell_y = tf.to_float(tf.reshape(tf.tile(tf.range(self.grid_h), [self.grid_w]), (1, self.grid_w, self.grid_h, 1, 1))) 
+        cell_y = tf.transpose(cell_y, (0,2,1,3,4)) 
+ 
+        cell_grid = tf.tile(tf.concat([cell_x,cell_y], -1), [self.batch_size, 1, 1, self.nb_box, 1]) 
         
         coord_mask = tf.zeros(mask_shape)
         conf_mask  = tf.zeros(mask_shape)
