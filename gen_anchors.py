@@ -57,10 +57,10 @@ def print_anchors(centroids):
 
     r = "anchors: ["
     for i in sorted_indices[:-1]:
-        r += '%0.2f,%0.2f, ' % (anchors[i,0], anchors[i,1])
+        r += '%0.5f,%0.5f, ' % (anchors[i,0], anchors[i,1])
 
     #there should not be comma after last anchor, that's why
-    r += '%0.2f,%0.2f' % (anchors[sorted_indices[-1:],0], anchors[sorted_indices[-1:],1])
+    r += '%0.5f,%0.5f' % (anchors[sorted_indices[-1:],0], anchors[sorted_indices[-1:],1])
     r += "]"
 
     print(r)
