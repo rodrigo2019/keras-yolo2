@@ -63,18 +63,19 @@ def _main_(args):
     weights_path = args.weights
     image_path   = args.input
 
-    if weights_path == '':
-        weights_path = config['train']['saved_weights_name']
 
     with open(config_path) as config_buffer:    
         config = json.load(config_buffer)
+
+    if weights_path == '':
+        weights_path = config['train']['saved_weights_name']
 
     ###############################
     #   Make the model 
     ###############################
 
     yolo = YOLO(backend             = config['model']['backend'],
-                input_size          = config['model']['input_size'], 
+                input_size          = (config['model']['input_size_h'],config['model']['input_size_w']), 
                 labels              = config['model']['labels'], 
                 max_box_per_image   = config['model']['max_box_per_image'],
                 anchors             = config['model']['anchors'],
