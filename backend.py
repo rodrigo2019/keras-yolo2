@@ -33,6 +33,7 @@ class BaseFeatureExtractor(object):
     def extract(self, input_image):
         return self.feature_extractor(input_image)
 
+
 class FullYoloFeature(BaseFeatureExtractor):
     """docstring for ClassName"""
     def __init__(self, input_size):
@@ -165,12 +166,16 @@ class FullYoloFeature(BaseFeatureExtractor):
 
         self.feature_extractor = Model(input_image, x, name='Full_YOLO_backend')  
         if input_size[2] == 3:
-            self.feature_extractor.load_weights(FULL_YOLO_BACKEND_PATH)
+            try:
+                self.feature_extractor.load_weights(FULL_YOLO_BACKEND_PATH)
+            except:
+                print("Unable to load backend weigths. Using a fresh model")
         else:
             print('pre trained weights are avaliable just for RGB network.')
 
     def normalize(self, image):
         return image / 255.
+
 
 class TinyYoloFeature(BaseFeatureExtractor):
     """docstring for ClassName"""
@@ -204,12 +209,16 @@ class TinyYoloFeature(BaseFeatureExtractor):
 
         self.feature_extractor = Model(input_image, x, name='Tiny_YOLO_backend')  
         if input_size[2] == 3:
-            self.feature_extractor.load_weights(TINY_YOLO_BACKEND_PATH)
+            try:
+                self.feature_extractor.load_weights(TINY_YOLO_BACKEND_PATH)
+            except:
+                print("Unable to load backend weigths. Using a fresh model")
         else:
             print('pre trained weights are avaliable just for RGB network.')
 
     def normalize(self, image):
         return image / 255.
+
 
 class MobileNetFeature(BaseFeatureExtractor):
     """docstring for ClassName"""
@@ -217,7 +226,13 @@ class MobileNetFeature(BaseFeatureExtractor):
         input_image = Input(shape=input_size)
 
         mobilenet = MobileNet(input_shape=(224,224,3), include_top=False)
-        mobilenet.load_weights(MOBILENET_BACKEND_PATH)
+        if input_size[2] == 3:
+            try:
+                mobilenet.load_weights(MOBILENET_BACKEND_PATH)
+            except:
+                print("Unable to load backend weigths. Using a fresh model")
+        else:
+            print('pre trained weights are avaliable just for RGB network.')
 
         x = mobilenet(input_image)
 
@@ -229,6 +244,7 @@ class MobileNetFeature(BaseFeatureExtractor):
         image = image * 2.
 
         return image		
+
 
 class SqueezeNetFeature(BaseFeatureExtractor):
     """docstring for ClassName"""
@@ -278,7 +294,10 @@ class SqueezeNetFeature(BaseFeatureExtractor):
 
         self.feature_extractor = Model(input_image, x, name='SqueezeNet_backend')  
         if input_size[2] == 3:
-            self.feature_extractor.load_weights(SQUEEZENET_BACKEND_PATH)
+            try:
+                self.feature_extractor.load_weights(SQUEEZENET_BACKEND_PATH)
+            except:
+                print("Unable to load backend weigths. Using a fresh model")
         else:
             print('pre trained weights are avaliable just for RGB network.')
 
@@ -292,13 +311,20 @@ class SqueezeNetFeature(BaseFeatureExtractor):
 
         return image    
 
+
 class Inception3Feature(BaseFeatureExtractor):
     """docstring for ClassName"""
     def __init__(self, input_size):
         input_image = Input(shape=input_size)
 
         inception = InceptionV3(input_shape=input_size, include_top=False)
-        inception.load_weights(INCEPTION3_BACKEND_PATH)
+        if input_size[2] == 3:
+            try:
+                inception.load_weights(INCEPTION3_BACKEND_PATH)
+            except:
+                    print("Unable to load backend weigths. Using a fresh model")
+        else:
+            print('pre trained weights are avaliable just for RGB network.')
 
         x = inception(input_image)
 
@@ -310,6 +336,7 @@ class Inception3Feature(BaseFeatureExtractor):
         image = image * 2.
 
         return image
+        
 
 class VGG16Feature(BaseFeatureExtractor):
     """docstring for ClassName"""
