@@ -45,5 +45,13 @@
         "valid_annot_folder":   "",
 
         "valid_times":          1
+    },
+
+    "backup":{
+        "create_backup":        true,
+        "redirect_model":       true,
+        "backup_path":          "../backup",
+        "backup_prefix":        "Tiny_yolo_VOC",
+        "readme_message":       "put your comment here"
     }
 }
