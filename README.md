@@ -106,6 +106,7 @@ The configuration file is a json file, which looks like this:
         "coord_scale":          1.0,            # determine how much to penalize wrong position and size predictions (x, y, w, h)
         "class_scale":          1.0,            # determine how much to penalize wrong class prediction
 
+        "saved_weights_name":   "raccon.h5",
         "debug":                true            # turn on/off the line that prints current confidence, position, size, class losses and recall
     },
 
@@ -116,6 +117,14 @@ The configuration file is a json file, which looks like this:
         "valid_annot_folder":   "",
 
         "valid_times":          1
+    }
+
+    "backup":{  #it is usefull for testing networks, this backup will save the whole repsoitory, and can be used again in the future
+        "create_backup":        true,
+        "redirect_model":       true,           #if true, will rename tensorboard_log_dir and saved_weights_name to keep in same directory
+        "backup_path":          "../backup",
+        "backup_prefix":        "Tiny_yolo_VOC",
+        "readme_message":       "put your comment here"
     }
 }
 
