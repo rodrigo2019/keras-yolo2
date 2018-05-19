@@ -42,7 +42,8 @@ def create_backup(config):
     if os.path.isdir(path) :
         shutil.rmtree(path)
     os.makedirs(path)
-    shutil.copytree(os.path.realpath(__file__),os.path.join(path,"Keras-yolo2"), ignore=shutil.ignore_patterns(".git"))
+    
+    shutil.copytree(os.path.dirname(os.path.realpath(__file__)),os.path.join(path,"Keras-yolo2"), ignore=shutil.ignore_patterns(".git"))
     if config['backup']['readme_message'] != "":
         with open(os.path.join(path,"readme.txt"),'w') as readme_file:
             readme_file.write(config['backup']['readme_message'])
