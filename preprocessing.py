@@ -7,6 +7,7 @@ from imgaug import augmenters as iaa
 from keras.utils import Sequence
 import xml.etree.ElementTree as ET
 from utils import BoundBox, bbox_iou
+from tqdm import tqdm
 
 def parse_annotation(ann_dir, img_dir, labels=[]):
     all_imgs = []
@@ -67,7 +68,9 @@ def parse_annotation_csv(csv_file, labels = [], base_path = ""):
     all_imgs_indices = {}
     count_indice = 0
     with open(csv_file, "r") as annotations:
-        for i, line in enumerate(annotations):
+        annotations = annotations.read().split("\n")
+        for i, line in enumerate(tqdm(annotations)):
+            if line == "": continue
             try:
                 line = line.replace("\n","") #remove \n from the end in the line.
                 fname, xmin, ymin, xmax, ymax, obj_name = line.split(",")
