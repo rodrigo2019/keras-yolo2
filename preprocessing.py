@@ -84,6 +84,11 @@ def parse_annotation_csv(csv_file, labels = [], base_path = ""):
                 img['width'] = width
                 img['height'] = height
 
+                if obj_name == "": #if the object has no name, this means that this image is a background image
+                    all_imgs_indices[fname] = count_indice
+                    all_imgs.append(img)
+                    count_indice += 1
+
                 obj = {}
                 obj['xmin'] = int(xmin)
                 obj['xmax'] = int(xmax)
