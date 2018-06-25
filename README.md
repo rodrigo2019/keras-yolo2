@@ -76,6 +76,7 @@ The configuration file is a json file, which looks like this:
         "architecture":         "Full Yolo",    # "Tiny Yolo" or "Full Yolo" or "MobileNet" or "SqueezeNet" or "Inception3"
         "input_size_w":         448,
         "input_size_h":         448,
+        "gray_mode":            false,
         "anchors":              [0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828],
         "max_box_per_image":    10,        
         "labels":               ["raccoon"]
