@@ -88,6 +88,7 @@ def parse_annotation_csv(csv_file, labels = [], base_path = ""):
                     all_imgs_indices[fname] = count_indice
                     all_imgs.append(img)
                     count_indice += 1
+                    continue
 
                 obj = {}
                 obj['xmin'] = int(xmin)
