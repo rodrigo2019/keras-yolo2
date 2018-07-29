@@ -2,19 +2,14 @@
 
 
 from preprocessing import parse_annotation, parse_annotation_csv
+from utils import get_session, create_backup
 from frontend import YOLO
-from datetime import datetime
 import numpy as np
 import tensorflow as tf
-import shutil
 import json
 import keras
 import argparse
 import os
-
-
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 argparser = argparse.ArgumentParser(
     description='Train and validate YOLO_v2 model on any dataset')
@@ -25,39 +20,6 @@ argparser.add_argument(
     default='config.json',
     help='path to configuration file')
 
-
-def get_session():
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    return tf.Session(config=config)
-
-
-def create_backup(config):
-
-    backup_folder = config['backup']['backup_path']
-    prefix = config['backup']['backup_prefix']
-    backup_id = datetime.now().strftime('%Y%m%d%H%M%S')
-    train_folder_name = "_".join([prefix,backup_id])
-    path = os.path.join(backup_folder,train_folder_name)
-    if os.path.isdir(path) :
-        shutil.rmtree(path)
-    os.makedirs(path)
-    
-    shutil.copytree(os.path.dirname(os.path.realpath(__file__)),os.path.join(path,"Keras-yolo2"), ignore=shutil.ignore_patterns(".git"))
-    if config['backup']['readme_message'] != "":
-        with open(os.path.join(path,"readme.txt"),'w') as readme_file:
-            readme_file.write(config['backup']['readme_message'])
-
-    if config['backup']['redirect_model']:
-        model_name = ".".join([train_folder_name,"h5"])
-        model_name = os.path.join(path, model_name)
-        log_name = os.path.join(path,"logs")
-        print('\n\nRedirecting {} file name to {}.'.format(config['train']['saved_weights_name'],model_name))
-        print('Redirecting {} tensorborad log to {}.'.format(config['train']['tensorboard_log_dir'],log_name))
-        config['train']['saved_weights_name'] = model_name
-        config['train']['tensorboard_log_dir'] = log_name
-    
-    return config
 
 def _main_(args):
     config_path = args.conf

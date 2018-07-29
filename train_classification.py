@@ -4,8 +4,12 @@ Created on Tue Jan 23 14:44:54 2018
 
 @author: Rodrigo.Andrade
 """
-from keras.models import Model
-from keras.layers import  Input, MaxPooling2D, BatchNormalization, Flatten, Dense
+from keras.models import Model, load_model
+from keras.layers import  Input, MaxPooling2D, BatchNormalization
+from keras.layers.convolutional import Conv2D
+from keras.layers import GlobalAveragePooling2D
+from keras.layers.core import Activation
+from keras.layers.advanced_activations import LeakyReLU
 from keras.optimizers import Adam
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import ModelCheckpoint
@@ -14,7 +18,7 @@ from keras.callbacks import CSVLogger
 from keras.utils import Sequence
 from imgaug import augmenters as iaa
 from backend import BaseFeatureExtractor
-from utils import list_images, import_feature_extractor
+from utils import list_images, import_feature_extractor, get_session, create_backup
 import cv2
 import numpy as np
 import os
@@ -212,6 +216,11 @@ def _main_(args):
     with open(config_path) as config_buffer:    
         config = json.loads(config_buffer.read())
 
+    if config['backup']['create_backup']:
+        config = create_backup(config)
+
+    keras.backend.tensorflow_backend.set_session(get_session())
+
     #path for the training and validation dataset
     datasetTrainPath = os.path.join(args.folder,"train")
     datasetValPath = os.path.join(args.folder,"val")
@@ -256,9 +265,11 @@ def _main_(args):
     }  
 
     #callbacks    
-    checkPointSaverBest=ModelCheckpoint(config['train']['saved_weights_name'], monitor='val_acc', verbose=1, 
+    model_name = config['train']['saved_weights_name']
+    checkPointSaverBest=ModelCheckpoint(model_name, monitor='val_acc', verbose=1, 
                                         save_best_only=True, save_weights_only=False, mode='auto', period=1)
-    checkPointSaver=ModelCheckpoint(config['train']['saved_weights_name']+"_ckp.hdf5", verbose=1, 
+    ckp_model_name = os.path.splitext(model_name)[1]+"_ckp.h5"
+    checkPointSaver=ModelCheckpoint(ckp_model_name, verbose=1, 
                                 save_best_only=False, save_weights_only=False, period=10)
 
     tb=TensorBoard(log_dir=config['train']['tensorboard_log_dir'], histogram_freq=0, batch_size=batchSize, write_graph=True,
@@ -288,15 +299,19 @@ def _main_(args):
     features = feature_extractor.extract(input_image)          
 
     # make the model head
-    output = Flatten()(features)
-    output = Dense(512, activation="relu")(output)
-    output = Dense(256, activation="relu")(output)
-    output = Dense(classes, activation="sigmoid")(output) if classes == 1 else Dense(classes, activation="softmax")(output)
+    output = Conv2D(classes, (1, 1), padding="same")(features)
+    output = BatchNormalization()(output)
+    output = LeakyReLU(alpha=0.1)(output)
+    output = GlobalAveragePooling2D()(output)
+    output = Activation("sigmoid")(output) if classes == 1 else Activation("softmax")(output)
 
-    model = Model(input_image, output)   
-    opt = Adam()
-    model.compile(loss="binary_crossentropy" if classes == 1 else "categorical_crossentropy",
-                optimizer=opt,metrics=["accuracy"])
+    if config['model']['pretrained_weights'] != "":
+        model = load_model(config['model']['pretrained_weights'] )
+    else:
+        model = Model(input_image, output)   
+        opt = Adam()
+        model.compile(loss="binary_crossentropy" if classes == 1 else "categorical_crossentropy",
+                    optimizer=opt,metrics=["accuracy"])
     model.summary()
 
     model.fit_generator(
