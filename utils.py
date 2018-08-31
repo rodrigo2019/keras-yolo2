@@ -1,12 +1,15 @@
 from backend import (TinyYoloFeature, FullYoloFeature, MobileNetFeature, SqueezeNetFeature, 
                     Inception3Feature, VGG16Feature, ResNet50Feature, BaseFeatureExtractor)
+from datetime import datetime
+import xml.etree.ElementTree as ET
 import numpy as np
 import os
-import xml.etree.ElementTree as ET
 import tensorflow as tf
 import copy
 import cv2
 import sys
+import shutil
+
 
 class BoundBox:
     def __init__(self, xmin, ymin, xmax, ymax, c = None, classes = None):
@@ -272,3 +275,35 @@ def list_files(basePath, validExts=(""), contains=None):
                 # construct the path to the image and yield it
                 imagePath = os.path.join(rootDir, filename)
                 yield imagePath
+
+def get_session():
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    return tf.Session(config=config)
+
+def create_backup(config):
+
+    backup_folder = config['backup']['backup_path']
+    prefix = config['backup']['backup_prefix']
+    backup_id = datetime.now().strftime('%Y%m%d%H%M%S')
+    train_folder_name = "_".join([prefix,backup_id])
+    path = os.path.join(backup_folder,train_folder_name)
+    if os.path.isdir(path) :
+        shutil.rmtree(path)
+    os.makedirs(path)
+    
+    shutil.copytree(os.path.dirname(os.path.realpath(__file__)),os.path.join(path,"Keras-yolo2"), ignore=shutil.ignore_patterns(".git"))
+    if config['backup']['readme_message'] != "":
+        with open(os.path.join(path,"readme.txt"),'w') as readme_file:
+            readme_file.write(config['backup']['readme_message'])
+
+    if config['backup']['redirect_model']:
+        model_name = ".".join([train_folder_name,"h5"])
+        model_name = os.path.join(path, model_name)
+        log_name = os.path.join(path,"logs")
+        print('\n\nRedirecting {} file name to {}.'.format(config['train']['saved_weights_name'],model_name))
+        print('Redirecting {} tensorborad log to {}.'.format(config['train']['tensorboard_log_dir'],log_name))
+        config['train']['saved_weights_name'] = model_name
+        config['train']['tensorboard_log_dir'] = log_name
+    
+    return config
