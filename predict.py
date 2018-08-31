@@ -6,10 +6,12 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 from preprocessing import parse_annotation
-from utils import draw_boxes
+from utils import draw_boxes, get_session
 from frontend import YOLO
 from utils import list_images
+import keras
 import json
+import tensorflow as tf
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
@@ -34,12 +36,12 @@ argparser.add_argument(
     '--input',
     help='path to an image or an video (mp4 format)')
 
-
 def _main_(args):
     config_path  = args.conf
     weights_path = args.weights
     image_path   = args.input
 
+    keras.backend.tensorflow_backend.set_session(get_session())
 
     with open(config_path) as config_buffer:    
         config = json.load(config_buffer)
