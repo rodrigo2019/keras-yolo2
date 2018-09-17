@@ -170,6 +170,8 @@ class BatchGenerator(Sequence):
             img = cv2.resize(img,(self.config['IMAGE_W'], self.config['IMAGE_H']))       
             # assign input image to x_batch
             if self.norm != None: 
+                if len(img.shape) == 2:
+                    img = img[..., np.newaxis]
                 x_batch[instance_count] = self.norm(img)
             else:
                 x_batch[instance_count] = img
@@ -305,7 +307,7 @@ def _main_(args):
     output = GlobalAveragePooling2D()(output)
     output = Activation("sigmoid")(output) if classes == 1 else Activation("softmax")(output)
 
-    if config['model']['pretrained_weights'] != "":
+    if config['train']['pretrained_weights'] != "":
         model = load_model(config['model']['pretrained_weights'] )
     else:
         model = Model(input_image, output)   
