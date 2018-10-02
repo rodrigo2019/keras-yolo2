@@ -206,6 +206,8 @@ class YOLO(object):
         nb_conf_box  = tf.reduce_sum(tf.to_float(conf_mask  > 0.0))
         nb_class_box = tf.reduce_sum(tf.to_float(class_mask > 0.0))
         
+        true_box_wh = tf.sqrt(true_box_wh)
+        pred_box_wh = tf.sqrt(pred_box_wh)
         loss_xy    = tf.reduce_sum(tf.square(true_box_xy-pred_box_xy)     * coord_mask) / (nb_coord_box + 1e-6) / 2.
         loss_wh    = tf.reduce_sum(tf.square(true_box_wh-pred_box_wh)     * coord_mask) / (nb_coord_box + 1e-6) / 2.
         loss_conf  = tf.reduce_sum(tf.square(true_box_conf-pred_box_conf) * conf_mask)  / (nb_conf_box  + 1e-6) / 2.
@@ -325,7 +327,8 @@ class YOLO(object):
         map_evaluator_cb = self.MAP_evaluation(self, valid_generator,
                                                 save_best=True,
                                                 save_name=root+"_bestMap"+ext,
-                                                tensorboard=tensorboard_cb)
+                                                tensorboard=tensorboard_cb,
+                                                iou_threshold=0.5)
 
         if not isinstance(custom_callback,list):
             custom_callback = [custom_callback]
