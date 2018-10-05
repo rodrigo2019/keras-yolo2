@@ -351,7 +351,7 @@ class YOLO(object):
        
 
 
-    def predict(self, image, third_party_model=None):
+    def predict(self, image):
 
         if len(image.shape) == 3 and self.gray_mode:
             if image.shape[2] == 3:
@@ -421,6 +421,8 @@ class YOLO(object):
 
             self.bestMap = 0
 
+            self.model = self.yolo.model
+
             if not isinstance(self.tensorboard,keras.callbacks.TensorBoard) and self.tensorboard is not None:
                 raise ValueError("Tensorboard object must be a instance from keras.callbacks.TensorBoard")
 
@@ -428,11 +430,10 @@ class YOLO(object):
         def on_epoch_end(self, epoch, logs={}):
 
             if epoch % self.period == 0 and self.period != 0:
-                average_precisions = self.evaluate()
+                mAP, average_precisions = self.evaluate_mAP()
                 print('\n')
                 for label, average_precision in average_precisions.items():
                     print(self.yolo.labels[label], '{:.4f}'.format(average_precision))
-                mAP = sum(average_precisions.values()) / len(average_precisions)
                 print('mAP: {:.4f}'.format(mAP)) 
 
                 if self.save_best and self.save_name is not None and mAP > self.bestMap:
@@ -450,9 +451,14 @@ class YOLO(object):
                     summary_value.tag = "val_mAP"
                     self.tensorboard.writer.add_summary(summary, epoch)
 
-        def evaluate(self):
+        def evaluate_mAP(self):
+            average_precisions = self._calc_avg_precisions()
+            mAP = sum(average_precisions.values()) / len(average_precisions)
+
+            return mAP, average_precisions
+
+        def _calc_avg_precisions(self):
              
-            self.yolo.model = self.model
             # gather all detections and annotations
             all_detections     = [[None for i in range(self.generator.num_classes())] for j in range(self.generator.size())]
             all_annotations    = [[None for i in range(self.generator.num_classes())] for j in range(self.generator.size())]
