@@ -175,10 +175,10 @@ class YOLO(object):
         iou_scores  = tf.truediv(intersect_areas, union_areas)
 
         best_ious = tf.reduce_max(iou_scores, axis=4)
-        conf_mask = conf_mask + tf.to_float(best_ious < 0.6) * (1 - y_true[..., 4]) * self.no_object_scale
+        conf_mask_neg = tf.to_float(best_ious < 0.6) * (1 - y_true[..., 4]) * self.no_object_scale
         
         # penalize the confidence of the boxes, which are reponsible for corresponding ground truth box
-        conf_mask = conf_mask + y_true[..., 4] * self.object_scale
+        conf_mask_pos = y_true[..., 4] * self.object_scale
         
         ### class mask: simply the position of the ground truth boxes (the predictors)
         class_mask = y_true[..., 4] * tf.gather(self.class_wt, true_box_class) * self.class_scale       
@@ -202,7 +202,8 @@ class YOLO(object):
         """
         Finalize the loss
         """
-        nb_coord_box = tf.reduce_sum(tf.to_float(coord_mask > 0.0))
+        nb_conf_box_neg = tf.reduce_sum(tf.to_float(conf_mask_neg > 0.0))
+        nb_conf_box_pos = tf.reduce_sum(tf.to_float(conf_mask_pos > 0.0))
         nb_conf_box  = tf.reduce_sum(tf.to_float(conf_mask  > 0.0))
         nb_class_box = tf.reduce_sum(tf.to_float(class_mask > 0.0))
         
@@ -210,7 +211,9 @@ class YOLO(object):
         pred_box_wh = tf.sqrt(pred_box_wh)
         loss_xy    = tf.reduce_sum(tf.square(true_box_xy-pred_box_xy)     * coord_mask) / (nb_coord_box + 1e-6) / 2.
         loss_wh    = tf.reduce_sum(tf.square(true_box_wh-pred_box_wh)     * coord_mask) / (nb_coord_box + 1e-6) / 2.
-        loss_conf  = tf.reduce_sum(tf.square(true_box_conf-pred_box_conf) * conf_mask)  / (nb_conf_box  + 1e-6) / 2.
+        loss_conf_neg = tf.reduce_sum(tf.square(true_box_conf-pred_box_conf) * conf_mask_neg) / (nb_conf_box_neg + 1e-6) / 2.
+        loss_conf_pos = tf.reduce_sum(tf.square(true_box_conf-pred_box_conf) * conf_mask_pos) / (nb_conf_box_pos + 1e-6) / 2.
+        loss_conf = loss_conf_neg + loss_conf_pos
         loss_class = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=true_box_class, logits=pred_box_class)
         loss_class = tf.reduce_sum(loss_class * class_mask) / (nb_class_box + 1e-6)
         
@@ -402,7 +405,7 @@ class YOLO(object):
         def __init__(self,
                     yolo,
                     generator, 
-                    iou_threshold=0.3,
+                    iou_threshold=0.5,
                     score_threshold=0.3,
                     save_path=None,
                     period=1,
