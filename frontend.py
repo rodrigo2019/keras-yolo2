@@ -86,7 +86,6 @@ class YOLO(object):
         cell_grid = tf.tile(tf.concat([cell_x,cell_y], -1), [self.batch_size, 1, 1, self.nb_box, 1]) 
         
         coord_mask = tf.zeros(mask_shape)
-        conf_mask  = tf.zeros(mask_shape)
         class_mask = tf.zeros(mask_shape)
         
         seen = tf.Variable(0.)
@@ -202,9 +201,9 @@ class YOLO(object):
         """
         Finalize the loss
         """
+        nb_coord_box = tf.reduce_sum(tf.to_float(coord_mask > 0.0))
         nb_conf_box_neg = tf.reduce_sum(tf.to_float(conf_mask_neg > 0.0))
         nb_conf_box_pos = tf.reduce_sum(tf.to_float(conf_mask_pos > 0.0))
-        nb_conf_box  = tf.reduce_sum(tf.to_float(conf_mask  > 0.0))
         nb_class_box = tf.reduce_sum(tf.to_float(class_mask > 0.0))
         
         true_box_wh = tf.sqrt(true_box_wh)
@@ -468,7 +467,7 @@ class YOLO(object):
 
             for i in range(self.generator.size()):
                 raw_image = self.generator.load_image(i)
-                raw_height, raw_width, raw_channels = raw_image.shape
+                raw_height, raw_width, _ = raw_image.shape
 
                 # make the boxes and the labels
                 pred_boxes  = self.yolo.predict(raw_image)
