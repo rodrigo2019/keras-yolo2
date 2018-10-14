@@ -53,5 +53,5 @@
         "backup_path":          "../backup",
         "backup_prefix":        "Tiny_yolo_VOC",
     }
-    }
+}
 }

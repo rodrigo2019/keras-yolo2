@@ -125,7 +125,6 @@ The configuration file is a json file, which looks like this:
         "redirect_model":       true,           #if true, will rename tensorboard_log_dir and saved_weights_name to keep in same directory
         "backup_path":          "../backup",
         "backup_prefix":        "Tiny_yolo_VOC",
-        "readme_message":       "put your comment here"
     }
 }
 
