@@ -47,7 +47,7 @@ def _main_(args):
         config = json.load(config_buffer)
 
     if weights_path == '':
-        weights_path = config['train']['saved_weights_name']
+        weights_path = config['train']['pretrained_weights"']
 
     ###############################
     #   Make the model 
