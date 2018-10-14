@@ -293,9 +293,11 @@ def create_backup(config):
     os.makedirs(path)
     
     shutil.copytree(os.path.dirname(os.path.realpath(__file__)),os.path.join(path,"Keras-yolo2"), ignore=shutil.ignore_patterns(".git"))
-    if config['backup']['readme_message'] != "":
-        with open(os.path.join(path,"readme.txt"),'w') as readme_file:
-            readme_file.write(config['backup']['readme_message'])
+    readme_message = ""
+    while(readme_message == ""):
+        readme_message = input("Insert a comment about this training: ")
+    with open(os.path.join(path,"readme.txt"),'w') as readme_file:
+        readme_file.write(readme_message)
 
     if config['backup']['redirect_model']:
         model_name = ".".join([train_folder_name,"h5"])
