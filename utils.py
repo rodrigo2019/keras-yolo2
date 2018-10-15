@@ -64,21 +64,31 @@ def bbox_iou(box1, box2):
 def draw_boxes(image, boxes, labels):
     image_h, image_w, _ = image.shape
 
+    color_levels = [0,255,128,64,32]
+    colors = []
+    for r in color_levels:
+        for g in color_levels:
+            for b in color_levels:
+                if r==g and r==b: #prevent grayscale colors
+                    continue
+                colors.append((b,g,r))
+
     for box in boxes:
         xmin = int(box.xmin*image_w)
         ymin = int(box.ymin*image_h)
         xmax = int(box.xmax*image_w)
         ymax = int(box.ymax*image_h)
 
-        cv2.rectangle(image, (xmin,ymin), (xmax,ymax), (0,255,0), 3)
+        line_width_factor = int(min(image_h,image_w)*0.005)
+        cv2.rectangle(image, (xmin,ymin), (xmax,ymax), colors[box.get_label()], line_width_factor*2)
         cv2.putText(image, 
-                    labels[box.get_label()] + ' ' + str(box.get_score()), 
-                    (xmin, ymin - 13), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 
-                    1e-3 * image_h, 
-                    (0,255,0), 2)
+                    "{} {:.3f}".format(labels[box.get_label()],box.get_score()),  
+                    (xmin, ymin - line_width_factor * 3), 
+                    cv2.FONT_HERSHEY_PLAIN, 
+                    2e-3 * min(image_h,image_w), 
+                    (0,255,0), line_width_factor)
         
-    return image          
+    return image      
         
 def decode_netout(netout, anchors, nb_class, obj_threshold=0.5, nms_threshold=0.3):
     grid_h, grid_w, nb_box = netout.shape[:3]
