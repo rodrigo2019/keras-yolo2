@@ -28,14 +28,23 @@ argparser.add_argument(
     help='IOU threshold',
     type=float)
 
+argparser.add_argument(
+    '-w',
+    '--weights',
+    default='',
+    help='path to pretrained weights')
 
 def _main_(args):
     config_path = args.conf
+    weights_path = args.weights
     
     keras.backend.tensorflow_backend.set_session(get_session())
 
     with open(config_path) as config_buffer:    
         config = json.loads(config_buffer.read())
+
+    if weights_path == '':
+        weights_path = config['train']['pretrained_weights"']
 
     ###############################
     #   Parse the annotations 
@@ -107,7 +116,10 @@ def _main_(args):
     #   Load the pretrained weights (if any) 
     ###############################    
 
-    if os.path.exists(config['train']['pretrained_weights']):
+    if weights_path != '':
+        print("Loading pre-trained weights in", weights_path)
+        yolo.load_weights(weights_path)
+    elif os.path.exists(config['train']['pretrained_weights']):
         print("Loading pre-trained weights in", config['train']['pretrained_weights'])
         yolo.load_weights(config['train']['pretrained_weights'])
     else:
