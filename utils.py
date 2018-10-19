@@ -134,7 +134,7 @@ def decode_netout(netout, anchors, nb_class, obj_threshold=0.5, nms_threshold=0.
                     index_j = sorted_indices[j]
                     
                     if bbox_iou(boxes[index_i], boxes[index_j]) >= nms_threshold:
-                        boxes[index_j].classes[c] = 0
+                        boxes[index_i].classes[c] = 0
                         
     # remove the boxes which are less likely than a obj_threshold
     boxes = [box for box in boxes if box.get_score() > obj_threshold]
