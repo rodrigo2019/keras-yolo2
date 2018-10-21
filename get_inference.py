@@ -1,17 +1,16 @@
-#! /usr/bin/env python
-
-import argparse
-import os
-import cv2
-import numpy as np
+#! /usr/bin/env python3
 from tqdm import tqdm
-from preprocessing import parse_annotation
 from utils import draw_boxes, get_session
 from frontend import YOLO
 from utils import list_images
+import tensorflow as tf
+import numpy as np
 import keras
 import json
-import tensorflow as tf
+import argparse
+import os
+import cv2
+
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"

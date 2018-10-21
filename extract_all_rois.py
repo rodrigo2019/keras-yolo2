@@ -1,5 +1,5 @@
 
-from preprocessing import parse_annotation, parse_annotation_csv
+from preprocessing import parse_annotation_xml, parse_annotation_csv
 from tqdm import tqdm
 import numpy as np
 import json
@@ -29,13 +29,13 @@ def _main_(args):
 
     if config['parser_annotation_type'] == 'xml':
         # parse annotations of the training set
-        train_imgs, train_labels = parse_annotation(config['train']['train_annot_folder'], 
+        train_imgs, train_labels = parse_annotation_xml(config['train']['train_annot_folder'], 
                                                     config['train']['train_image_folder'], 
                                                     config['model']['labels'])
 
         # parse annotations of the validation set, if any, otherwise split the training set
         if os.path.exists(config['valid']['valid_annot_folder']):
-            valid_imgs, valid_labels = parse_annotation(config['valid']['valid_annot_folder'], 
+            valid_imgs, valid_labels = parse_annotation_xml(config['valid']['valid_annot_folder'], 
                                                         config['valid']['valid_image_folder'], 
                                                         config['model']['labels'])
             split = False

@@ -1,66 +1,72 @@
+from imgaug import augmenters as iaa
+from keras.utils import Sequence
+from utils import BoundBox, bbox_iou
+from tqdm import tqdm
+import xml.etree.ElementTree as ET
+import numpy as np
+import imgaug as ia
 import os
 import cv2
 import copy
-import numpy as np
-import imgaug as ia
-from imgaug import augmenters as iaa
-from keras.utils import Sequence
-import xml.etree.ElementTree as ET
-from utils import BoundBox, bbox_iou
-from tqdm import tqdm
 
-def parse_annotation(ann_dir, img_dir, labels=[]):
+def parse_annotation_xml(ann_dir, img_dir, labels=[]):
+#This parser is utilized on VOC dataset
     all_imgs = []
     seen_labels = {}
     
-    for ann in sorted(os.listdir(ann_dir)):
-        img = {'object':[]}
+    ann_files = os.listdir(ann_dir)
+    with tqdm(total=len(ann_files)) as pbar:
+        for ann in sorted(ann_files):
+            pbar.update(1)
+            img = {'object':[]}
 
-        tree = ET.parse(os.path.join(ann_dir,ann))
-        
-        for elem in tree.iter():
-            if 'filename' in elem.tag:
-                img['filename'] = os.path.join(img_dir, elem.text)
-            if 'width' in elem.tag:
-                img['width'] = int(elem.text)
-            if 'height' in elem.tag:
-                img['height'] = int(elem.text)
-            if 'object' in elem.tag or 'part' in elem.tag:
-                obj = {}
-                
-                for attr in list(elem):
-                    if 'name' in attr.tag:
-                        obj['name'] = attr.text
+            tree = ET.parse(os.path.join(ann_dir,ann))
+            
+            for elem in tree.iter():
+                if 'filename' in elem.tag:
+                    img['filename'] = os.path.join(img_dir, elem.text)
+                if 'width' in elem.tag:
+                    img['width'] = int(elem.text)
+                if 'height' in elem.tag:
+                    img['height'] = int(elem.text)
+                if 'object' in elem.tag or 'part' in elem.tag:
+                    obj = {}
+                    
+                    for attr in list(elem):
+                        if 'name' in attr.tag:
+                            obj['name'] = attr.text
 
-                        if obj['name'] in seen_labels:
-                            seen_labels[obj['name']] += 1
-                        else:
-                            seen_labels[obj['name']] = 1
-                        
-                        if len(labels) > 0 and obj['name'] not in labels:
-                            break
-                        else:
-                            img['object'] += [obj]
+                            if obj['name'] in seen_labels:
+                                seen_labels[obj['name']] += 1
+                            else:
+                                seen_labels[obj['name']] = 1
                             
-                    if 'bndbox' in attr.tag:
-                        for dim in list(attr):
-                            if 'xmin' in dim.tag:
-                                obj['xmin'] = int(round(float(dim.text)))
-                            if 'ymin' in dim.tag:
-                                obj['ymin'] = int(round(float(dim.text)))
-                            if 'xmax' in dim.tag:
-                                obj['xmax'] = int(round(float(dim.text)))
-                            if 'ymax' in dim.tag:
-                                obj['ymax'] = int(round(float(dim.text)))
+                            if len(labels) > 0 and obj['name'] not in labels:
+                                break
+                            else:
+                                img['object'] += [obj]
+                                
+                        if 'bndbox' in attr.tag:
+                            for dim in list(attr):
+                                if 'xmin' in dim.tag:
+                                    obj['xmin'] = int(round(float(dim.text)))
+                                if 'ymin' in dim.tag:
+                                    obj['ymin'] = int(round(float(dim.text)))
+                                if 'xmax' in dim.tag:
+                                    obj['xmax'] = int(round(float(dim.text)))
+                                if 'ymax' in dim.tag:
+                                    obj['ymax'] = int(round(float(dim.text)))
 
-        if len(img['object']) > 0:
-            all_imgs += [img]
+            if len(img['object']) > 0:
+                all_imgs += [img]
                         
     return all_imgs, seen_labels
 
 
 def parse_annotation_csv(csv_file, labels = [], base_path = ""):
-    
+#This is a generic parser that uses CSV files
+# File_path,xmin,ymin,xmax,ymax,class
+
     print("parsing {} csv file can took a while, wait please.".format(csv_file))
     all_imgs = []
     seen_labels = {}
@@ -115,7 +121,7 @@ def parse_annotation_csv(csv_file, labels = [], base_path = ""):
                     seen_labels[obj_name] += 1
 
             except:
-                print("Exception occured at line {} from {}".format(i, csv_file))
+                print("Exception occured at line {} from {}".format(i+1, csv_file))
                 raise
     return all_imgs, seen_labels
 
