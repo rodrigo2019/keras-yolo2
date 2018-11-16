@@ -313,12 +313,7 @@ class YOLO(object):
                            patience=3, 
                            mode='min', 
                            verbose=1)
-        checkpoint_cb = ModelCheckpoint(saved_weights_name, 
-                                     monitor='val_loss', 
-                                     verbose=1, 
-                                     save_best_only=True, 
-                                     mode='min', 
-                                     period=1)
+        
         tensorboard_cb = TensorBoard(log_dir=tb_logdir, 
                                   histogram_freq=0, 
                                   #write_batch_performance=True,
@@ -326,6 +321,15 @@ class YOLO(object):
                                   write_images=False)
 
         root, ext = os.path.splitext(saved_weights_name)
+        ckp_best_loss = ModelCheckpoint(root+"_bestLoss"+ext, 
+                                     monitor='val_loss', 
+                                     verbose=1, 
+                                     save_best_only=True, 
+                                     mode='min', 
+                                     period=1)
+        ckp_saver = ModelCheckpoint(root+"_ckp"+ext, 
+                                     verbose=1, 
+                                     period=10)
         map_evaluator_cb = self.MAP_evaluation(self, valid_generator,
                                                 save_best=True,
                                                 save_name=root+"_bestMap"+ext,
@@ -334,7 +338,7 @@ class YOLO(object):
 
         if not isinstance(custom_callback,list):
             custom_callback = [custom_callback]
-        callbacks = [checkpoint_cb, tensorboard_cb, map_evaluator_cb] + custom_callback
+        callbacks = [ckp_best_loss, ckp_saver,tensorboard_cb, map_evaluator_cb] + custom_callback
         if early_stop: callbacks.append(early_stop_cb)
         
         ############################################
