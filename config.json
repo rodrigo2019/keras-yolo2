@@ -51,7 +51,6 @@
         "create_backup":        true,
         "redirect_model":       true,
         "backup_path":          "../backup",
-        "backup_prefix":        "Tiny_yolo_VOC",
+        "backup_prefix":        "Tiny_yolo_VOC"
     }
-}
 }
