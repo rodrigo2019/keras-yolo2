@@ -108,7 +108,7 @@ class YoloLoss(object):
         b_o_pred = y_pred[..., 4]
 
         num_true_labels = self.grid_size[0] * self.grid_size[1] * self.nb_anchors
-        y_true_p = K.reshape(y_true[..., :4], shape=(8, 1, 1, 1, num_true_labels, 4))
+        y_true_p = K.reshape(y_true[..., :4], shape=(self.batch_size, 1, 1, 1, num_true_labels, 4))
         iou_scores_buff = calculate_ious(y_true_p, K.expand_dims(y_pred, axis=4))
         best_ious = K.max(iou_scores_buff, axis=4)
 
