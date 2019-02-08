@@ -1,6 +1,6 @@
 from imgaug import augmenters as iaa
 from keras.utils import Sequence
-from utils import BoundBox, bbox_iou
+from .utils import BoundBox, bbox_iou
 from tqdm import tqdm
 import xml.etree.ElementTree as ET
 import numpy as np

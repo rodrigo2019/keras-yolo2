@@ -1,13 +1,13 @@
 from keras.models import Model
 from keras.layers import Reshape, Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Flatten, Dense, Lambda
 from keras.layers.advanced_activations import LeakyReLU
-from utils import decode_netout, compute_overlap, compute_ap, import_feature_extractor
+from .utils import decode_netout, compute_overlap, compute_ap, import_feature_extractor
 from keras.applications.mobilenet import MobileNet
 from keras.layers.merge import concatenate
 from keras.optimizers import SGD, Adam, RMSprop
-from preprocessing import BatchGenerator
+from .preprocessing import BatchGenerator
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from backend import BaseFeatureExtractor
+from .backend import BaseFeatureExtractor
 import tensorflow as tf
 import numpy as np
 import os

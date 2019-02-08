@@ -1,4 +1,4 @@
-from backend import (TinyYoloFeature, FullYoloFeature, MobileNetFeature, SqueezeNetFeature, 
+from .backend import (TinyYoloFeature, FullYoloFeature, MobileNetFeature, SqueezeNetFeature,
                     Inception3Feature, VGG16Feature, ResNet50Feature, BaseFeatureExtractor)
 from datetime import datetime
 import xml.etree.ElementTree as ET
