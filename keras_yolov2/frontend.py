@@ -1,20 +1,14 @@
-from keras.models import Model
-from keras.layers import Reshape, Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Flatten, Dense, Lambda
-from keras.layers.advanced_activations import LeakyReLU
+from .yolo_loss import YoloLoss
 from .utils import decode_netout, compute_overlap, compute_ap, import_feature_extractor
-from keras.applications.mobilenet import MobileNet
-from keras.layers.merge import concatenate
-from keras.optimizers import SGD, Adam, RMSprop
 from .preprocessing import BatchGenerator
+from keras.models import Model
+from keras.layers import Reshape, Conv2D, Input
+from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from .backend import BaseFeatureExtractor
-import tensorflow as tf
 import numpy as np
-import os
-import cv2
 import keras
-
-from yolo_loss import YoloLoss
+import cv2
+import os
 
 
 class YOLO(object):
