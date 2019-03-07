@@ -1,5 +1,5 @@
 from .yolo_loss import YoloLoss
-from .utils import decode_netout, compute_overlap, compute_ap, import_feature_extractor
+from .utils import decode_netout, compute_overlap, compute_ap, import_feature_extractor, import_dynamically
 from .preprocessing import BatchGenerator
 from keras.models import Model
 from keras.layers import Reshape, Conv2D, Input
@@ -7,6 +7,7 @@ from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 import numpy as np
 import keras
+import sys
 import cv2
 import os
 
@@ -74,24 +75,25 @@ class YOLO(object):
         self.model.load_weights(weight_path)
 
     def train(self, train_imgs,     # the list of images to train the model
-                    valid_imgs,     # the list of images used to validate the model
-                    train_times,    # the number of time to repeat the training set, often used for small datasets
-                    valid_times,    # the number of times to repeat the validation set, often used for small datasets
-                    nb_epochs,      # number of epoches
-                    learning_rate,  # the learning rate
-                    batch_size,     # the size of the batch
-                    warmup_epochs,  # number of initial batches to let the model familiarize with the new dataset
-                    object_scale,
-                    no_object_scale,
-                    coord_scale,
-                    class_scale,
-                    saved_weights_name='best_weights.h5',
-                    debug=False,
-                    workers=3,
-                    max_queue_size=8,
-                    early_stop=True,
-                    custom_callback=[],
-                    tb_logdir="./"):     
+              valid_imgs,     # the list of images used to validate the model
+              train_times,    # the number of time to repeat the training set, often used for small datasets
+              valid_times,    # the number of times to repeat the validation set, often used for small datasets
+              nb_epochs,      # number of epoches
+              learning_rate,  # the learning rate
+              batch_size,     # the size of the batch
+              warmup_epochs,  # number of initial batches to let the model familiarize with the new dataset
+              object_scale,
+              no_object_scale,
+              coord_scale,
+              class_scale,
+              saved_weights_name='best_weights.h5',
+              debug=False,
+              workers=3,
+              max_queue_size=8,
+              early_stop=True,
+              custom_callback=[],
+              tb_logdir="./",
+              train_generator_callback=None):
 
         self.batch_size = batch_size
 
@@ -118,11 +120,18 @@ class YOLO(object):
             'ANCHORS'         : self.anchors,
             'BATCH_SIZE'      : self.batch_size,
             'TRUE_BOX_BUFFER' : self.max_box_per_image,
-        }    
+        }
+        if train_generator_callback is not None:
+            basepath = os.path.dirname(train_generator_callback)
+            sys.path.append(basepath)
+            custom_callback_name = os.path.basename(train_generator_callback)
+            custom_callback = import_dynamically(custom_callback_name)
 
+        print(custom_callback)
         train_generator = BatchGenerator(train_imgs, 
-                                     generator_config, 
-                                     norm=self.feature_extractor.normalize)
+                                         generator_config,
+                                         norm=self.feature_extractor.normalize,
+                                         callback=custom_callback)
         valid_generator = BatchGenerator(valid_imgs, 
                                      generator_config, 
                                      norm=self.feature_extractor.normalize,

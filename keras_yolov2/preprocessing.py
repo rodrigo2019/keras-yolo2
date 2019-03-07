@@ -126,18 +126,18 @@ def parse_annotation_csv(csv_file, labels=[], base_path=""):
 
 
 class BatchGenerator(Sequence):
-    def __init__(self, images, config, shuffle=True, jitter=True, norm=None):
-        self.generator = None
+    def __init__(self, images, config, shuffle=True, jitter=True, norm=None, callback=None):
 
-        self.images = images
-        self.config = config
+        self._images = images
+        self._config = config
 
-        self.shuffle = shuffle
-        self.jitter = jitter
-        self.norm = norm
+        self._shuffle = shuffle
+        self._jitter = jitter
+        self._norm = norm
+        self._callback = callback
 
-        self.anchors = [BoundBox(0, 0, config['ANCHORS'][2*i], config['ANCHORS'][2*i+1])
-                        for i in range(int(len(config['ANCHORS'])//2))]
+        self._anchors = [BoundBox(0, 0, config['ANCHORS'][2 * i], config['ANCHORS'][2 * i + 1])
+                         for i in range(int(len(config['ANCHORS'])//2))]
 
         # augmentors by https://github.com/aleju/imgaug
         sometimes = lambda aug: iaa.Sometimes(0.5, aug)
@@ -146,7 +146,7 @@ class BatchGenerator(Sequence):
         # All augmenters with per_channel=0.5 will sample one value _per image_
         # in 50% of all cases. In all other cases they will sample new values
         # _per channel_.
-        self.aug_pipe = iaa.Sequential(
+        self._aug_pipe = iaa.Sequential(
             [
                 # apply the following augmenters to most images
                 # iaa.Fliplr(0.5), # horizontally flip 50% of all images
@@ -195,22 +195,22 @@ class BatchGenerator(Sequence):
         )
 
         if shuffle:
-            np.random.shuffle(self.images)
+            np.random.shuffle(self._images)
 
     def __len__(self):
-        return int(np.ceil(float(len(self.images))/self.config['BATCH_SIZE']))   
+        return int(np.ceil(float(len(self._images)) / self._config['BATCH_SIZE']))
 
     def num_classes(self):
-        return len(self.config['LABELS'])
+        return len(self._config['LABELS'])
 
     def size(self):
-        return len(self.images)    
+        return len(self._images)
 
     def load_annotation(self, i):
         annots = []
 
-        for obj in self.images[i]['object']:
-            annot = [obj['xmin'], obj['ymin'], obj['xmax'], obj['ymax'], self.config['LABELS'].index(obj['name'])]
+        for obj in self._images[i]['object']:
+            annot = [obj['xmin'], obj['ymin'], obj['xmax'], obj['ymax'], self._config['LABELS'].index(obj['name'])]
             annots += [annot]
 
         if len(annots) == 0:
@@ -219,51 +219,51 @@ class BatchGenerator(Sequence):
         return np.array(annots)
 
     def load_image(self, i):
-        if self.config['IMAGE_C'] == 1:
-            image = cv2.imread(self.images[i]['filename'], cv2.IMREAD_GRAYSCALE)
+        if self._config['IMAGE_C'] == 1:
+            image = cv2.imread(self._images[i]['filename'], cv2.IMREAD_GRAYSCALE)
             image = image[..., np.newaxis]
-        elif self.config['IMAGE_C'] == 3:
-            image = cv2.imread(self.images[i]['filename'])
+        elif self._config['IMAGE_C'] == 3:
+            image = cv2.imread(self._images[i]['filename'])
         else:
             raise ValueError("Invalid number of image channels.")
         return image
 
     def __getitem__(self, idx):
-        l_bound = idx*self.config['BATCH_SIZE']
-        r_bound = (idx+1)*self.config['BATCH_SIZE']
+        l_bound = idx*self._config['BATCH_SIZE']
+        r_bound = (idx+1)*self._config['BATCH_SIZE']
 
-        if r_bound > len(self.images):
-            r_bound = len(self.images)
-            l_bound = r_bound - self.config['BATCH_SIZE']
+        if r_bound > len(self._images):
+            r_bound = len(self._images)
+            l_bound = r_bound - self._config['BATCH_SIZE']
 
         instance_count = 0
-        if self.config['IMAGE_C'] == 3:
-            x_batch = np.zeros((r_bound - l_bound, self.config['IMAGE_H'], self.config['IMAGE_W'], 3))  # input images
+        if self._config['IMAGE_C'] == 3:
+            x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'], 3))  # input images
         else:
-            x_batch = np.zeros((r_bound - l_bound, self.config['IMAGE_H'], self.config['IMAGE_W'], 1))
+            x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'], 1))
 
-        y_batch = np.zeros((r_bound - l_bound, self.config['GRID_H'],  self.config['GRID_W'], self.config['BOX'],
-                            4+1+len(self.config['LABELS'])))  # desired network output
+        y_batch = np.zeros((r_bound - l_bound, self._config['GRID_H'], self._config['GRID_W'], self._config['BOX'],
+                            4 + 1 + len(self._config['LABELS'])))  # desired network output
 
-        for train_instance in self.images[l_bound:r_bound]:
+        for train_instance in self._images[l_bound:r_bound]:
             # augment input image and fix object's position and size
-            img, all_objs = self.aug_image(train_instance, jitter=self.jitter)
+            img, all_objs = self.aug_image(train_instance, jitter=self._jitter)
 
             for obj in all_objs:
-                if obj['xmax'] > obj['xmin'] and obj['ymax'] > obj['ymin'] and obj['name'] in self.config['LABELS']:
+                if obj['xmax'] > obj['xmin'] and obj['ymax'] > obj['ymin'] and obj['name'] in self._config['LABELS']:
                     center_x = .5*(obj['xmin'] + obj['xmax'])
-                    center_x = center_x / (float(self.config['IMAGE_W']) / self.config['GRID_W'])
+                    center_x = center_x / (float(self._config['IMAGE_W']) / self._config['GRID_W'])
                     center_y = .5*(obj['ymin'] + obj['ymax'])
-                    center_y = center_y / (float(self.config['IMAGE_H']) / self.config['GRID_H'])
+                    center_y = center_y / (float(self._config['IMAGE_H']) / self._config['GRID_H'])
 
                     grid_x = int(np.floor(center_x))
                     grid_y = int(np.floor(center_y))
 
-                    if grid_x < self.config['GRID_W'] and grid_y < self.config['GRID_H']:
-                        obj_indx = self.config['LABELS'].index(obj['name'])
+                    if grid_x < self._config['GRID_W'] and grid_y < self._config['GRID_H']:
+                        obj_indx = self._config['LABELS'].index(obj['name'])
                         
-                        center_w = (obj['xmax'] - obj['xmin']) / (float(self.config['IMAGE_W']) / self.config['GRID_W'])
-                        center_h = (obj['ymax'] - obj['ymin']) / (float(self.config['IMAGE_H']) / self.config['GRID_H'])
+                        center_w = (obj['xmax'] - obj['xmin'])/(float(self._config['IMAGE_W'])/self._config['GRID_W'])
+                        center_h = (obj['ymax'] - obj['ymin'])/(float(self._config['IMAGE_H'])/self._config['GRID_H'])
                         
                         box = [center_x, center_y, center_w, center_h]
 
@@ -273,8 +273,8 @@ class BatchGenerator(Sequence):
                         
                         shifted_box = BoundBox(0, 0, center_w, center_h)
                         
-                        for i in range(len(self.anchors)):
-                            anchor = self.anchors[i]
+                        for i in range(len(self._anchors)):
+                            anchor = self._anchors[i]
                             iou = bbox_iou(shifted_box, anchor)
                             
                             if max_iou < iou:
@@ -287,8 +287,8 @@ class BatchGenerator(Sequence):
                         y_batch[instance_count, grid_y, grid_x, best_anchor, 5 + obj_indx] = 1
 
             # assign input image to x_batch
-            if self.norm is not None:
-                x_batch[instance_count] = self.norm(img)
+            if self._norm is not None:
+                x_batch[instance_count] = self._norm(img)
             else:
                 # plot image and bounding boxes for sanity check
                 for obj in all_objs:
@@ -305,20 +305,22 @@ class BatchGenerator(Sequence):
         return x_batch, y_batch
 
     def on_epoch_end(self):
-        if self.shuffle:
-            np.random.shuffle(self.images)
+        if self._shuffle:
+            np.random.shuffle(self._images)
 
     def aug_image(self, train_instance, jitter):
         image_name = train_instance['filename']
-        if self.config['IMAGE_C'] == 1:
+        if self._config['IMAGE_C'] == 1:
             image = cv2.imread(image_name, cv2.IMREAD_GRAYSCALE)
-        elif self.config['IMAGE_C'] == 3:
+        elif self._config['IMAGE_C'] == 3:
             image = cv2.imread(image_name)
         else:
             raise ValueError("Invalid number of image channels.")
 
         if image is None:
             print('Cannot find ', image_name)
+        if self._callback is not None:
+            self._callback(image, train_instance)
 
         h = image.shape[0]
         w = image.shape[1]
@@ -342,11 +344,11 @@ class BatchGenerator(Sequence):
             if flip > 0.5:
                 image = cv2.flip(image, 1)
                 
-            image = self.aug_pipe.augment_image(image)            
+            image = self._aug_pipe.augment_image(image)
             
         # resize the image to standard size
-        image = cv2.resize(image, (self.config['IMAGE_W'], self.config['IMAGE_H']))
-        if self.config['IMAGE_C'] == 1:
+        image = cv2.resize(image, (self._config['IMAGE_W'], self._config['IMAGE_H']))
+        if self._config['IMAGE_C'] == 1:
             image = image[..., np.newaxis]
         image = image[..., ::-1]
 
@@ -356,17 +358,17 @@ class BatchGenerator(Sequence):
                 if jitter:
                     obj[attr] = int(obj[attr] * scale - offx)
                     
-                obj[attr] = int(obj[attr] * float(self.config['IMAGE_W']) / w)
-                obj[attr] = max(min(obj[attr], self.config['IMAGE_W']), 0)
+                obj[attr] = int(obj[attr] * float(self._config['IMAGE_W']) / w)
+                obj[attr] = max(min(obj[attr], self._config['IMAGE_W']), 0)
                 
             for attr in ['ymin', 'ymax']:
                 if jitter: obj[attr] = int(obj[attr] * scale - offy)
                     
-                obj[attr] = int(obj[attr] * float(self.config['IMAGE_H']) / h)
-                obj[attr] = max(min(obj[attr], self.config['IMAGE_H']), 0)
+                obj[attr] = int(obj[attr] * float(self._config['IMAGE_H']) / h)
+                obj[attr] = max(min(obj[attr], self._config['IMAGE_H']), 0)
 
             if jitter and flip > 0.5:
                 xmin = obj['xmin']
-                obj['xmin'] = self.config['IMAGE_W'] - obj['xmax']
-                obj['xmax'] = self.config['IMAGE_W'] - xmin
+                obj['xmin'] = self._config['IMAGE_W'] - obj['xmax']
+                obj['xmax'] = self._config['IMAGE_W'] - xmin
         return image, all_objs

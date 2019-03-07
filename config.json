@@ -16,7 +16,8 @@
         "train_csv_base_path":  "",
         "train_image_folder":   "",
         "train_annot_folder":   "",     
-          
+
+        "callback":             null,
         "train_times":          8,
         "pretrained_weights":   "",
         "batch_size":           4,
