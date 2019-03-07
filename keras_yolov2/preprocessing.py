@@ -320,7 +320,7 @@ class BatchGenerator(Sequence):
         if image is None:
             print('Cannot find ', image_name)
         if self._callback is not None:
-            self._callback(image, train_instance)
+            image, train_instance = self._callback(image, train_instance)
 
         h = image.shape[0]
         w = image.shape[1]
