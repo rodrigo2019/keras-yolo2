@@ -1,13 +1,11 @@
 #! /usr/bin/env python3
-from preprocessing import parse_annotation_xml, parse_annotation_csv
-from preprocessing import BatchGenerator
-from utils import get_session, create_backup
-from frontend import YOLO
-import numpy as np
-import tensorflow as tf
-import json
-import keras
+from keras_yolov2.preprocessing import parse_annotation_xml, parse_annotation_csv
+from keras_yolov2.preprocessing import BatchGenerator
+from keras_yolov2.utils import get_session
+from keras_yolov2.frontend import YOLO
 import argparse
+import keras
+import json
 import os
 
 argparser = argparse.ArgumentParser(
@@ -32,6 +30,7 @@ argparser.add_argument(
     default='',
     help='path to pretrained weights')
 
+
 def _main_(args):
     config_path = args.conf
     weights_path = args.weights
@@ -44,21 +43,21 @@ def _main_(args):
     if weights_path == '':
         weights_path = config['train']['pretrained_weights"']
 
-    ###############################
+    ##########################
     #   Parse the annotations 
-    ###############################
+    ##########################
     without_valid_imgs = False
     if config['parser_annotation_type'] == 'xml':
         # parse annotations of the training set
         train_imgs, train_labels = parse_annotation_xml(config['train']['train_annot_folder'], 
-                                                    config['train']['train_image_folder'], 
-                                                    config['model']['labels'])
+                                                        config['train']['train_image_folder'],
+                                                        config['model']['labels'])
 
         # parse annotations of the validation set, if any.
         if os.path.exists(config['valid']['valid_annot_folder']):
             valid_imgs, valid_labels = parse_annotation_xml(config['valid']['valid_annot_folder'], 
-                                                        config['valid']['valid_image_folder'], 
-                                                        config['model']['labels'])
+                                                            config['valid']['valid_image_folder'],
+                                                            config['model']['labels'])
         else:
             without_valid_imgs = True
 
@@ -71,15 +70,15 @@ def _main_(args):
         # parse annotations of the validation set, if any.
         if os.path.exists(config['valid']['valid_csv_file']):
             valid_imgs, valid_labels = parse_annotation_csv(config['valid']['valid_csv_file'],
-                                                        config['model']['labels'],
-                                                        config['valid']['valid_csv_base_path'])
+                                                            config['model']['labels'],
+                                                            config['valid']['valid_csv_base_path'])
         else:
             without_valid_imgs = True
     else:
         raise ValueError("'parser_annotations_type' must be 'xml' or 'csv' not {}.".format(config['parser_annotations_type']))
 
-    #remove samples without objects in the image
-    for i in range(len(train_imgs)-1,0,-1):
+    # remove samples without objects in the image
+    for i in range(len(train_imgs)-1, 0, -1):
         if len(train_imgs[i]['object']) == 0:
             del train_imgs[i]
 
@@ -97,22 +96,22 @@ def _main_(args):
         print('No labels are provided. Evaluate on all seen labels.')
         config['model']['labels'] = train_labels.keys()
         with open("labels.json", 'w') as outfile:
-            json.dump({"labels" : list(train_labels.keys())},outfile)
+            json.dump({"labels": list(train_labels.keys())}, outfile)
         
-    ###############################
+    ########################
     #   Construct the model 
-    ###############################
+    ########################
 
-    yolo = YOLO(backend             = config['model']['backend'],
-                input_size          = (config['model']['input_size_h'], config['model']['input_size_w']), 
-                labels              = config['model']['labels'], 
-                max_box_per_image   = config['model']['max_box_per_image'],
-                anchors             = config['model']['anchors'],
-                gray_mode           = config['model']['gray_mode'])
+    yolo = YOLO(backend=config['model']['backend'],
+                input_size=(config['model']['input_size_h'], config['model']['input_size_w']),
+                labels=config['model']['labels'],
+                max_box_per_image=config['model']['max_box_per_image'],
+                anchors=config['model']['anchors'],
+                gray_mode=config['model']['gray_mode'])
 
-    ###############################
+    #########################################
     #   Load the pretrained weights (if any) 
-    ###############################    
+    #########################################
 
     if weights_path != '':
         print("Loading pre-trained weights in", weights_path)
@@ -123,50 +122,50 @@ def _main_(args):
     else:
         raise Exception("No pretrained weights found.")
 
-    ###############################
+    #########################
     #   Evaluate the network
-    ###############################  
+    #########################
 
     print("calculing mAP for iou threshold = {}".format(args.iou))
     generator_config = {
-                'IMAGE_H'         : yolo.input_size[0], 
-                'IMAGE_W'         : yolo.input_size[1],
-                'IMAGE_C'         : yolo.input_size[2],
-                'GRID_H'          : yolo.grid_h,  
-                'GRID_W'          : yolo.grid_w,
-                'BOX'             : yolo.nb_box,
-                'LABELS'          : yolo.labels,
-                'CLASS'           : len(yolo.labels),
-                'ANCHORS'         : yolo.anchors,
-                'BATCH_SIZE'      : 4,
-                'TRUE_BOX_BUFFER' : yolo.max_box_per_image,
+                'IMAGE_H': yolo._input_size[0],
+                'IMAGE_W': yolo._input_size[1],
+                'IMAGE_C': yolo._input_size[2],
+                'GRID_H': yolo._grid_h,
+                'GRID_W': yolo._grid_w,
+                'BOX': yolo._nb_box,
+                'LABELS': yolo.labels,
+                'CLASS': len(yolo.labels),
+                'ANCHORS': yolo._anchors,
+                'BATCH_SIZE': 4,
+                'TRUE_BOX_BUFFER': yolo._max_box_per_image,
             } 
     if not without_valid_imgs:
         valid_generator = BatchGenerator(valid_imgs, 
-                                     generator_config, 
-                                     norm=yolo.feature_extractor.normalize,
-                                     jitter=False)  
-        valid_eval = YOLO.MAP_evaluation(yolo, valid_generator,
-                                    iou_threshold=args.iou)
+                                         generator_config,
+                                         norm=yolo._feature_extractor.normalize,
+                                         jitter=False)
+        valid_eval = YOLO.MAPevaluation(yolo, valid_generator,
+                                        iou_threshold=args.iou)
 
-        mAP, average_precisions = valid_eval.evaluate_mAP()
+        _map, average_precisions = valid_eval.evaluate_map()
         for label, average_precision in average_precisions.items():
             print(yolo.labels[label], '{:.4f}'.format(average_precision))
-        print('validation dataset mAP: {:.4f}\n'.format(mAP)) 
+        print('validation dataset mAP: {:.4f}\n'.format(_map))
 
     train_generator = BatchGenerator(train_imgs, 
                                      generator_config, 
-                                     norm=yolo.feature_extractor.normalize,
+                                     norm=yolo._feature_extractor.normalize,
                                      jitter=False)  
-    train_eval = YOLO.MAP_evaluation(yolo, train_generator,
-                                iou_threshold=args.iou)
+    train_eval = YOLO.MAPevaluation(yolo, train_generator,
+                                    iou_threshold=args.iou)
 
-    
-    mAP, average_precisions = train_eval.evaluate_mAP()
+    _map, average_precisions = train_eval.evaluate_map()
     for label, average_precision in average_precisions.items():
         print(yolo.labels[label], '{:.4f}'.format(average_precision))
-    print('training dataset mAP: {:.4f}'.format(mAP)) 
+    print('training dataset mAP: {:.4f}'.format(_map))
+
 
 if __name__ == '__main__':
-    args = argparser.parse_args()
-    _main_(args)
+    _args = argparser.parse_args()
+    _main_(_args)
