@@ -1,7 +1,6 @@
 # YOLOv2 in Keras and Applications
 
-This repo contains the implementation of YOLOv2 in Keras with Tensorflow backend. It supports training YOLOv2 network with various backends such as MobileNet and InceptionV3. Links to demo applications are shown below. Check out https://experiencor.github.io/yolo_demo/demo.html for a Raccoon Detector demo run entirely in brower with DeepLearn.js and MobileNet backend (it somehow breaks in Window). Source code of this demo is located at https://git.io/vF7vG.
-
+This repo contains the implementation of YOLOv2 in Keras with Tensorflow backend. It supports training YOLOv2 network with various backends such as MobileNet and InceptionV3.
 ## Todo list:
 - [x] Warmup training
 - [x] Raccoon detection, Self-driving car, and Kangaroo detection
@@ -90,6 +89,7 @@ The configuration file is a json file, which looks like this:
         "train_image_folder":   "/home/andy/data/raccoon_dataset/images/",
         "train_annot_folder":   "/home/andy/data/raccoon_dataset/anns/",      
           
+        "callback":             null,           # a specific callback to apply into image augmentation
         "train_times":          10,             # the number of time to cycle through the training set, useful for small datasets
         "pretrained_weights":   "",             # specify the path of the pretrained weights, but it's fine to start from scratch
         "batch_size":           16,             # the number of images to read in each batch
@@ -138,9 +138,6 @@ https://github.com/rodrigo2019/keras-yolo2/releases/tag/pre-trained-weights
 
 **These weights must be put in the root folder of the repository. They are the pretrained weights for the backend only and will be loaded during model creation. If the weights is not avaliable, the training will start from the scratch.**
 
-The link to the pretrained weights for the whole model (both frontend and backend) of the raccoon detector can be downloaded at:
-
-https://1drv.ms/f/s!ApLdDEW3ut5feoZAEUwmSMYdPlY
 
 These weights can be used as the pretrained weights for any one class object detectors.
 
@@ -161,7 +158,7 @@ By the end of this process, the code will write the weights of the best model to
 
 It carries out detection on the image and write the image with detected bounding boxes to the same folder.
 
-## Using a custom backend
+## Using a custom backend or generator callback
 
 It is possible to use a customizable backend doing a dynamically import
 to do it, change the architecture in the config file, like this:
@@ -169,6 +166,8 @@ to do it, change the architecture in the config file, like this:
 "architecture":         "./examples/custom_backend.SuperTinyYoloFeature",
 ```
 if your custom_backend file are in the root directory you must use ```./``` in order to indicate that you are using a file instead a known backend
+
+for the generator callback specified into json config, it works in the same way than the custom backend, check the examples into ./examples/generator_callback.py
 
 ## Using CSV files
 first change the option ```xml``` to ```csv``` in this line on json file:
