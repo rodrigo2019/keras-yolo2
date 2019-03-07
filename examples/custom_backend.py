@@ -1,12 +1,16 @@
-''' if your custom backend  file is in another folder, you can use sys.path.append to add the
-folder wheres the backend module from this repo is located, also it works for another imports '''
-#import sys
+"""
+if your custom backend  file is in another folder, you can use sys.path.append to add the
+folder wheres the backend module from this repo or where the keras_yolov2 module is located, also it works for
+another imports
+"""
+import sys
 #sys.path.append("path/to/backend")
-from backend import BaseFeatureExtractor
+sys.path.append("..")
+from keras_yolov2.backend import BaseFeatureExtractor
 from keras.models import Model
-import tensorflow as tf
-from keras.layers import Reshape, Conv2D, Input, MaxPooling2D, BatchNormalization
+from keras.layers import Conv2D, Input, MaxPooling2D, BatchNormalization
 from keras.layers.advanced_activations import LeakyReLU
+
 
 class SuperTinyYoloFeature(BaseFeatureExtractor):
     """
@@ -18,27 +22,27 @@ class SuperTinyYoloFeature(BaseFeatureExtractor):
         input_image = Input(shape=input_size)
 
         # Layer 1
-        x = Conv2D(1, (3,3), strides=(1,1), padding='same', name='conv_1', use_bias=False)(input_image)
+        x = Conv2D(1, (3, 3), strides=(1, 1), padding='same', name='conv_1', use_bias=False)(input_image)
         x = BatchNormalization(name='norm_1')(x)
         x = LeakyReLU(alpha=0.1)(x)
         x = MaxPooling2D(pool_size=(2, 2))(x)
 
         # Layer 2 - 5
-        for i in range(0,3):
-            x = Conv2D(2*(2**i), (3,3), strides=(1,1), padding='same', name='conv_' + str(i+2), use_bias=False)(x)
+        for i in range(0, 3):
+            x = Conv2D(2*(2**i), (3, 3), strides=(1, 1), padding='same', name='conv_' + str(i+2), use_bias=False)(x)
             x = BatchNormalization(name='norm_' + str(i+2))(x)
             x = LeakyReLU(alpha=0.1)(x)
             x = MaxPooling2D(pool_size=(2, 2))(x)
 
         # Layer 6
-        x = Conv2D(32, (3,3), strides=(1,1), padding='same', name='conv_6', use_bias=False)(x)
+        x = Conv2D(32, (3, 3), strides=(1, 1), padding='same', name='conv_6', use_bias=False)(x)
         x = BatchNormalization(name='norm_6')(x)
         x = LeakyReLU(alpha=0.1)(x)
-        x = MaxPooling2D(pool_size=(2, 2), strides=(1,1), padding='same')(x)
+        x = MaxPooling2D(pool_size=(2, 2), strides=(1, 1), padding='same')(x)
 
         # Layer 7 - 8
-        for i in range(0,2):
-            x = Conv2D(64, (3,3), strides=(1,1), padding='same', name='conv_' + str(i+7), use_bias=False)(x)
+        for i in range(0, 2):
+            x = Conv2D(64, (3, 3), strides=(1, 1), padding='same', name='conv_' + str(i+7), use_bias=False)(x)
             x = BatchNormalization(name='norm_' + str(i+7))(x)
             x = LeakyReLU(alpha=0.1)(x)
 
