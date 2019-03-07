@@ -1,14 +1,12 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
-
-from preprocessing import parse_annotation_xml, parse_annotation_csv
-from utils import get_session, create_backup
-from frontend import YOLO
+from keras_yolov2.preprocessing import parse_annotation_xml, parse_annotation_csv
+from keras_yolov2.utils import get_session, create_backup
+from keras_yolov2.frontend import YOLO
 import numpy as np
-import tensorflow as tf
-import json
-import keras
 import argparse
+import keras
+import json
 import os
 
 argparser = argparse.ArgumentParser(
@@ -37,15 +35,15 @@ def _main_(args):
 
     if config['parser_annotation_type'] == 'xml':
         # parse annotations of the training set
-        train_imgs, train_labels = parse_annotation_xml(config['train']['train_annot_folder'], 
-                                                    config['train']['train_image_folder'], 
-                                                    config['model']['labels'])
+        train_imgs, train_labels = parse_annotation_xml(config['train']['train_annot_folder'],
+                                                        config['train']['train_image_folder'],
+                                                        config['model']['labels'])
 
         # parse annotations of the validation set, if any, otherwise split the training set
         if os.path.exists(config['valid']['valid_annot_folder']):
             valid_imgs, valid_labels = parse_annotation_xml(config['valid']['valid_annot_folder'], 
-                                                        config['valid']['valid_image_folder'], 
-                                                        config['model']['labels'])
+                                                            config['valid']['valid_image_folder'],
+                                                            config['model']['labels'])
             split = False
         else:
             split = True
@@ -58,15 +56,14 @@ def _main_(args):
         # parse annotations of the validation set, if any, otherwise split the training set
         if os.path.exists(config['valid']['valid_csv_file']):
             valid_imgs, valid_labels = parse_annotation_csv(config['valid']['valid_csv_file'],
-                                                        config['model']['labels'],
-                                                        config['valid']['valid_csv_base_path'])
+                                                            config['model']['labels'],
+                                                            config['valid']['valid_csv_base_path'])
             split = False
         else:
             split = True
     else:
         raise ValueError("'parser_annotations_type' must be 'xml' or 'csv' not {}.".format(config['parser_annotations_type']))
 
-    
     if split:
         train_valid_split = int(0.8*len(train_imgs))
         np.random.shuffle(train_imgs)
@@ -88,22 +85,22 @@ def _main_(args):
         print('No labels are provided. Train on all seen labels.')
         config['model']['labels'] = train_labels.keys()
         with open("labels.json", 'w') as outfile:
-            json.dump({"labels" : list(train_labels.keys())},outfile)
+            json.dump({"labels": list(train_labels.keys())}, outfile)
         
     ###############################
     #   Construct the model 
     ###############################
 
-    yolo = YOLO(backend             = config['model']['backend'],
-                input_size          = (config['model']['input_size_h'], config['model']['input_size_w']), 
-                labels              = config['model']['labels'], 
-                max_box_per_image   = config['model']['max_box_per_image'],
-                anchors             = config['model']['anchors'],
-                gray_mode           = config['model']['gray_mode'])
+    yolo = YOLO(backend=config['model']['backend'],
+                input_size=(config['model']['input_size_h'], config['model']['input_size_w']),
+                labels=config['model']['labels'],
+                max_box_per_image=config['model']['max_box_per_image'],
+                anchors=config['model']['anchors'],
+                gray_mode=config['model']['gray_mode'])
 
-    ###############################
+    #########################################
     #   Load the pretrained weights (if any) 
-    ###############################    
+    #########################################
 
     if os.path.exists(config['train']['pretrained_weights']):
         print("Loading pre-trained weights in", config['train']['pretrained_weights'])
@@ -113,25 +110,26 @@ def _main_(args):
     #   Start the training process 
     ###############################
 
-    yolo.train(train_imgs         = train_imgs,
-               valid_imgs         = valid_imgs,
-               train_times        = config['train']['train_times'],
-               valid_times        = config['valid']['valid_times'],
-               nb_epochs          = config['train']['nb_epochs'], 
-               learning_rate      = config['train']['learning_rate'], 
-               batch_size         = config['train']['batch_size'],
-               warmup_epochs      = config['train']['warmup_epochs'],
-               object_scale       = config['train']['object_scale'],
-               no_object_scale    = config['train']['no_object_scale'],
-               coord_scale        = config['train']['coord_scale'],
-               class_scale        = config['train']['class_scale'],
-               saved_weights_name = config['train']['saved_weights_name'],
-               debug              = config['train']['debug'],
-               early_stop         = config['train']['early_stop'],
-               workers            = config['train']['workers'],
-               max_queue_size     = config['train']['max_queue_size'],
-               tb_logdir          = config['train']['tensorboard_log_dir'])
+    yolo.train(train_imgs=train_imgs,
+               valid_imgs=valid_imgs,
+               train_times=config['train']['train_times'],
+               valid_times=config['valid']['valid_times'],
+               nb_epochs=config['train']['nb_epochs'],
+               learning_rate=config['train']['learning_rate'],
+               batch_size=config['train']['batch_size'],
+               warmup_epochs=config['train']['warmup_epochs'],
+               object_scale=config['train']['object_scale'],
+               no_object_scale=config['train']['no_object_scale'],
+               coord_scale=config['train']['coord_scale'],
+               class_scale=config['train']['class_scale'],
+               saved_weights_name=config['train']['saved_weights_name'],
+               debug=config['train']['debug'],
+               early_stop=config['train']['early_stop'],
+               workers=config['train']['workers'],
+               max_queue_size=config['train']['max_queue_size'],
+               tb_logdir=config['train']['tensorboard_log_dir'])
+
 
 if __name__ == '__main__':
-    args = argparser.parse_args()
-    _main_(args)
+    _args = argparser.parse_args()
+    _main_(_args)
