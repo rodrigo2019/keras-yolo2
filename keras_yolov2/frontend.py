@@ -18,8 +18,8 @@ class YOLO(object):
 
         self._input_size = input_size
         self._gray_mode = gray_mode
-        self._labels = list(labels)
-        self._nb_class = len(self._labels)
+        self.labels = list(labels)
+        self._nb_class = len(self.labels)
         self._nb_box = len(anchors) // 2
         self._anchors = anchors
 
@@ -118,8 +118,8 @@ class YOLO(object):
             'GRID_H': self._grid_h,
             'GRID_W': self._grid_w,
             'BOX': self._nb_box,
-            'LABELS': self._labels,
-            'CLASS': len(self._labels),
+            'LABELS': self.labels,
+            'CLASS': len(self.labels),
             'ANCHORS': self._anchors,
             'BATCH_SIZE': self._batch_size,
             'TRUE_BOX_BUFFER': self._max_box_per_image,
