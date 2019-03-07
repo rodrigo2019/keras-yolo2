@@ -192,6 +192,8 @@ class YOLO(object):
                                  max_queue_size   = max_queue_size)      
        
 
+    def get_inference_model(self):
+        return self.model
 
     def predict(self, image):
 
