@@ -128,7 +128,8 @@ def _main_(args):
                workers=config['train']['workers'],
                max_queue_size=config['train']['max_queue_size'],
                tb_logdir=config['train']['tensorboard_log_dir'],
-               train_generator_callback=config['train']['callback'])
+               train_generator_callback=config['train']['callback'],
+               iout_threshold=config['valid']['iou_threshold'])
 
 
 if __name__ == '__main__':

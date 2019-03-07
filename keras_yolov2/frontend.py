@@ -96,7 +96,8 @@ class YOLO(object):
               early_stop=True,
               custom_callback=[],
               tb_logdir="./",
-              train_generator_callback=None):
+              train_generator_callback=None,
+              iout_threshold=0.5):
 
         self._batch_size = batch_size
 
@@ -185,7 +186,7 @@ class YOLO(object):
                                               save_best=True,
                                               save_name=root+"_bestMap"+ext,
                                               tensorboard=tensorboard_cb,
-                                              iou_threshold=0.5)
+                                              iou_threshold=iout_threshold)
 
         if not isinstance(custom_callback, list):
             custom_callback = [custom_callback]
