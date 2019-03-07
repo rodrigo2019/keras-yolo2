@@ -245,15 +245,12 @@ class BatchGenerator(Sequence):
         else:
             x_batch = np.zeros((r_bound - l_bound, self.config['IMAGE_H'], self.config['IMAGE_W'], 1))
 
-        b_batch = np.zeros((r_bound - l_bound, 1     , 1     , 1    ,  self.config['TRUE_BOX_BUFFER'], 4))   # list of self.config['TRUE_self.config['BOX']_BUFFER'] GT boxes
         y_batch = np.zeros((r_bound - l_bound, self.config['GRID_H'],  self.config['GRID_W'], self.config['BOX'], 4+1+len(self.config['LABELS'])))                # desired network output
 
         for train_instance in self.images[l_bound:r_bound]:
             # augment input image and fix object's position and size
             img, all_objs = self.aug_image(train_instance, jitter=self.jitter)
             
-            # construct output from object's x, y, w, h
-            true_box_index = 0
             
             for obj in all_objs:
                 if obj['xmax'] > obj['xmin'] and obj['ymax'] > obj['ymin'] and obj['name'] in self.config['LABELS']:
@@ -295,11 +292,6 @@ class BatchGenerator(Sequence):
                         y_batch[instance_count, grid_y, grid_x, best_anchor, 4  ] = 1.
                         y_batch[instance_count, grid_y, grid_x, best_anchor, 5+obj_indx] = 1
                         
-                        # assign the true box to b_batch
-                        b_batch[instance_count, 0, 0, 0, true_box_index] = box
-                        
-                        true_box_index += 1
-                        true_box_index = true_box_index % self.config['TRUE_BOX_BUFFER']
                             
             # assign input image to x_batch
             if self.norm != None: 
@@ -322,7 +314,7 @@ class BatchGenerator(Sequence):
 
         #print(' new batch created', idx)
 
-        return [x_batch, b_batch], y_batch
+        return x_batch, y_batch
 
     def on_epoch_end(self):
         if self.shuffle: np.random.shuffle(self.images)
