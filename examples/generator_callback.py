@@ -51,6 +51,6 @@ def aug_callback(image, instance):
         new_background[ymin:ymax, xmin:xmax] = image[ymin:ymax, xmin:xmax]
     instance['width'] = new_background.shape[1]
     instance['height'] = new_background.shape[0]
-    cv2.imshow("im", new_background)
-    cv2.waitKey(0)
-    return image, instance
+    # cv2.imshow("im", new_background)
+    # cv2.waitKey(0)
+    return new_background, instance
