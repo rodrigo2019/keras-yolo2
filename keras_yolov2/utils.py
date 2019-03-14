@@ -301,6 +301,8 @@ def get_session():
 
 
 def create_backup(config):
+    # TODO: the backup creation should be improved, because if the keras_yolo is used as module and the train.py and
+    # config.json is in another folder, it wont be copied to the backup
 
     backup_folder = config['backup']['backup_path']
     prefix = config['backup']['backup_prefix']
@@ -311,7 +313,7 @@ def create_backup(config):
         shutil.rmtree(path)
     os.makedirs(path)
     
-    shutil.copytree(os.path.dirname(os.path.realpath(__file__)), os.path.join(path, "Keras-yolo2"),
+    shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."), os.path.join(path, "Keras-yolo2"),
                     ignore=shutil.ignore_patterns(".git"))
     readme_message = ""
     while readme_message == "":
