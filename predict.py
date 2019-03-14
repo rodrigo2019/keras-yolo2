@@ -29,6 +29,13 @@ argparser.add_argument(
     help='path to pretrained weights')
 
 argparser.add_argument(
+    '-r',
+    '--real_time',
+    default=False,
+    type=bool,
+    help='use a camera for real time prediction')
+
+argparser.add_argument(
     '-i',
     '--input',
     help='path to an image or an video (mp4 format)')
@@ -38,7 +45,9 @@ def _main_(args):
     config_path = args.conf
     weights_path = args.weights
     image_path = args.input
+    use_camera = args.real_time
 
+    videos_format = [".mp4", "avi"]
     keras.backend.tensorflow_backend.set_session(get_session())
 
     with open(config_path) as config_buffer:    
@@ -68,25 +77,36 @@ def _main_(args):
     #   Predict bounding boxes
     ###########################
 
-    if image_path[-4:] == '.mp4':
-        video_out = image_path[:-4] + '_detected' + image_path[-4:]
+    if use_camera:
+        video_reader = cv2.VideoCapture(int(image_path))
+        while True:
+            ret, frame = video_reader.read()
+            if not ret:
+                break
+            boxes = yolo.predict(frame)
+            frame = draw_boxes(frame, boxes, config['model']['labels'])
+            cv2.imshow("frame", frame)
+            key = cv2.waitKey(1)
+            if key == ord("q") or key == 27:
+                break
+    elif os.path.splitext(image_path)[1] in videos_format:
+        file, ext = os.path.splitext(image_path)
+        video_out = '{}_detected.avi'.format(file)
         video_reader = cv2.VideoCapture(image_path)
 
         nb_frames = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_h = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
         frame_w = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
-
+        print(video_out)
         video_writer = cv2.VideoWriter(video_out,
-                                       cv2.VideoWriter_fourcc(*'MPEG'),
+                                       cv2.VideoWriter_fourcc(*'XVID'),
                                        50.0,
                                        (frame_w, frame_h))
 
         for _ in tqdm(range(nb_frames)):
             _, image = video_reader.read()
-            
             boxes = yolo.predict(image)
             image = draw_boxes(image, boxes, config['model']['labels'])
-
             video_writer.write(np.uint8(image))
 
         video_reader.release()
@@ -98,7 +118,6 @@ def _main_(args):
             image = draw_boxes(image, boxes, config['model']['labels'])
 
             print(len(boxes), 'boxes are found')
-
             cv2.imwrite(image_path[:-4] + '_detected' + image_path[-4:], image)
         else:
             detected_images_path = os.path.join(image_path, "detected")
