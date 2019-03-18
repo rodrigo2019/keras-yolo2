@@ -21,10 +21,10 @@ argparser.add_argument(
 
 def _main_(args):
     config_path = args.conf
-    
+
     keras.backend.tensorflow_backend.set_session(get_session())
 
-    with open(config_path) as config_buffer:    
+    with open(config_path) as config_buffer:
         config = json.loads(config_buffer.read())
 
     if config['backup']['create_backup']:
@@ -41,7 +41,7 @@ def _main_(args):
 
         # parse annotations of the validation set, if any, otherwise split the training set
         if os.path.exists(config['valid']['valid_annot_folder']):
-            valid_imgs, valid_labels = parse_annotation_xml(config['valid']['valid_annot_folder'], 
+            valid_imgs, valid_labels = parse_annotation_xml(config['valid']['valid_annot_folder'],
                                                             config['valid']['valid_image_folder'],
                                                             config['model']['labels'])
             split = False
@@ -76,7 +76,7 @@ def _main_(args):
 
         print('Seen labels:\t', train_labels)
         print('Given labels:\t', config['model']['labels'])
-        print('Overlap labels:\t', overlap_labels)           
+        print('Overlap labels:\t', overlap_labels)
 
         if len(overlap_labels) < len(config['model']['labels']):
             print('Some labels have no annotations! Please revise the list of labels in the config.json file!')
@@ -86,7 +86,7 @@ def _main_(args):
         config['model']['labels'] = train_labels.keys()
         with open("labels.json", 'w') as outfile:
             json.dump({"labels": list(train_labels.keys())}, outfile)
-        
+
     ###############################
     #   Construct the model 
     ###############################
@@ -129,7 +129,8 @@ def _main_(args):
                max_queue_size=config['train']['max_queue_size'],
                tb_logdir=config['train']['tensorboard_log_dir'],
                train_generator_callback=config['train']['callback'],
-               iout_threshold=config['valid']['iou_threshold'])
+               iou_threshold=config['valid']['iou_threshold'],
+               score_threshold=config['valid']['score_threshold'])
 
 
 if __name__ == '__main__':

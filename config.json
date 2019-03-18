@@ -41,6 +41,7 @@
 
     "valid": {
         "iou_threshold":        0.7,
+        "score_threshold":      0.5,
         "valid_csv_file":       "val.txt",
         "valid_csv_base_path":  "",
         "valid_image_folder":   "",

@@ -50,7 +50,7 @@ def _main_(args):
     videos_format = [".mp4", "avi"]
     keras.backend.tensorflow_backend.set_session(get_session())
 
-    with open(config_path) as config_buffer:    
+    with open(config_path) as config_buffer:
         config = json.load(config_buffer)
 
     if weights_path == '':
@@ -105,16 +105,21 @@ def _main_(args):
 
         for _ in tqdm(range(nb_frames)):
             _, image = video_reader.read()
-            boxes = yolo.predict(image)
+            boxes = yolo.predict(image,
+                                 iou_threshold=config['valid']['iou_threshold'],
+                                 score_threshold=config['valid']['score_threshold'])
+
             image = draw_boxes(image, boxes, config['model']['labels'])
             video_writer.write(np.uint8(image))
 
         video_reader.release()
-        video_writer.release()  
+        video_writer.release()
     else:
         if os.path.isfile(image_path):
             image = cv2.imread(image_path)
-            boxes = yolo.predict(image)
+            boxes = yolo.predict(image,
+                                 iou_threshold=config['valid']['iou_threshold'],
+                                 score_threshold=config['valid']['score_threshold'])
             image = draw_boxes(image, boxes, config['model']['labels'])
 
             print(len(boxes), 'boxes are found')
