@@ -79,7 +79,9 @@ def _main_(args):
 
     if use_camera:
         video_reader = cv2.VideoCapture(int(image_path))
+        pbar = tqdm()
         while True:
+            pbar.update(1)
             ret, frame = video_reader.read()
             if not ret:
                 break
@@ -89,6 +91,7 @@ def _main_(args):
             key = cv2.waitKey(1)
             if key == ord("q") or key == 27:
                 break
+        pbar.close()
     elif os.path.splitext(image_path)[1] in videos_format:
         file, ext = os.path.splitext(image_path)
         video_out = '{}_detected.avi'.format(file)
