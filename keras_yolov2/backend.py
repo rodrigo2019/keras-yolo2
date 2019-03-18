@@ -8,13 +8,15 @@ from keras.applications import InceptionV3
 from keras.applications.vgg16 import VGG16
 from keras.applications.resnet50 import ResNet50
 
-FULL_YOLO_BACKEND_PATH  = "full_yolo_backend.h5"   # should be hosted on a server
-TINY_YOLO_BACKEND_PATH  = "tiny_yolo_backend.h5"   # should be hosted on a server
-SQUEEZENET_BACKEND_PATH = "squeezenet_backend.h5"  # should be hosted on a server
-MOBILENET_BACKEND_PATH  = "mobilenet_backend.h5"   # should be hosted on a server
-INCEPTION3_BACKEND_PATH = "inception_backend.h5"   # should be hosted on a server
-VGG16_BACKEND_PATH      = "vgg16_backend.h5"       # should be hosted on a server
-RESNET50_BACKEND_PATH   = "resnet50_backend.h5"    # should be hosted on a server
+base_path = './backend_weights/'  # FIXME :: use environment variables
+
+FULL_YOLO_BACKEND_PATH  = base_path + "full_yolo_backend.h5"   # should be hosted on a server
+TINY_YOLO_BACKEND_PATH  = base_path + "tiny_yolo_backend.h5"   # should be hosted on a server
+SQUEEZENET_BACKEND_PATH = base_path + "squeezenet_backend.h5"  # should be hosted on a server
+MOBILENET_BACKEND_PATH  = base_path + "mobilenet_backend.h5"   # should be hosted on a server
+INCEPTION3_BACKEND_PATH = base_path + "inception_backend.h5"   # should be hosted on a server
+VGG16_BACKEND_PATH      = base_path + "vgg16_backend.h5"       # should be hosted on a server
+RESNET50_BACKEND_PATH   = base_path + "resnet50_backend.h5"    # should be hosted on a server
 
 class BaseFeatureExtractor(object):
     """docstring for ClassName"""
@@ -164,14 +166,15 @@ class FullYoloFeature(BaseFeatureExtractor):
         x = BatchNormalization(name='norm_22')(x)
         x = LeakyReLU(alpha=0.1)(x)
 
-        self.feature_extractor = Model(input_image, x, name='Full_YOLO_backend')  
+        self.feature_extractor = Model(input_image, x, name='Full_YOLO_backend')
         if input_size[2] == 3:
             try:
+                print("Loading pretrained weights: " + FULL_YOLO_BACKEND_PATH)
                 self.feature_extractor.load_weights(FULL_YOLO_BACKEND_PATH)
             except:
-                print("Unable to load backend weigths. Using a fresh model")
+                print("Unable to load backend weights. Using a fresh model")
         else:
-            print('pre trained weights are avaliable just for RGB network.')
+            print('pre trained weights are available just for RGB network.')
 
     def normalize(self, image):
         return image / 255.
@@ -210,11 +213,12 @@ class TinyYoloFeature(BaseFeatureExtractor):
         self.feature_extractor = Model(input_image, x, name='Tiny_YOLO_backend')  
         if input_size[2] == 3:
             try:
+                print("Loading pretrained weights: " + TINY_YOLO_BACKEND_PATH)
                 self.feature_extractor.load_weights(TINY_YOLO_BACKEND_PATH)
             except:
-                print("Unable to load backend weigths. Using a fresh model")
+                print("Unable to load backend weights. Using a fresh model")
         else:
-            print('pre trained weights are avaliable just for RGB network.')
+            print('pre trained weights are available just for RGB network.')
 
     def normalize(self, image):
         return image / 255.
@@ -228,11 +232,12 @@ class MobileNetFeature(BaseFeatureExtractor):
         mobilenet = MobileNet(input_shape=(224,224,3), include_top=False)
         if input_size[2] == 3:
             try:
+                print("Loading pretrained weights: " + MOBILENET_BACKEND_PATH)
                 mobilenet.load_weights(MOBILENET_BACKEND_PATH)
             except:
-                print("Unable to load backend weigths. Using a fresh model")
+                print("Unable to load backend weights. Using a fresh model")
         else:
-            print('pre trained weights are avaliable just for RGB network.')
+            print('pre trained weights are available just for RGB network.')
 
         x = mobilenet(input_image)
 
@@ -297,9 +302,9 @@ class SqueezeNetFeature(BaseFeatureExtractor):
             try:
                 self.feature_extractor.load_weights(SQUEEZENET_BACKEND_PATH)
             except:
-                print("Unable to load backend weigths. Using a fresh model")
+                print("Unable to load backend weights. Using a fresh model")
         else:
-            print('pre trained weights are avaliable just for RGB network.')
+            print('pre trained weights are available just for RGB network.')
 
     def normalize(self, image):
         image = image[..., ::-1]
@@ -322,9 +327,9 @@ class Inception3Feature(BaseFeatureExtractor):
             try:
                 inception.load_weights(INCEPTION3_BACKEND_PATH)
             except:
-                    print("Unable to load backend weigths. Using a fresh model")
+                    print("Unable to load backend weights. Using a fresh model")
         else:
-            print('pre trained weights are avaliable just for RGB network.')
+            print('pre trained weights are available just for RGB network.')
 
         x = inception(input_image)
 
