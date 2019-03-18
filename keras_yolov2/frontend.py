@@ -38,7 +38,7 @@ class YOLO(object):
             input_image = Input(shape=self._input_size)
 
         self._feature_extractor = import_feature_extractor(backend, self._input_size)
-        
+
         print(self._feature_extractor.get_output_shape())
         self._grid_h, self._grid_w = self._feature_extractor.get_output_shape()
         features = self._feature_extractor.extract(input_image)
@@ -52,13 +52,13 @@ class YOLO(object):
         output = Reshape((self._grid_h, self._grid_w, self._nb_box, 4 + 1 + self._nb_class), name="YOLO_output")(output)
 
         self._model = Model(input_image, output)
-       
+
         # initialize the weights of the detection layer
         layer = self._model.get_layer("Detection_layer")
         weights = layer.get_weights()
 
-        new_kernel = np.random.normal(size=weights[0].shape)/(self._grid_h * self._grid_w)
-        new_bias = np.random.normal(size=weights[1].shape)/(self._grid_h * self._grid_w)
+        new_kernel = np.random.normal(size=weights[0].shape) / (self._grid_h * self._grid_w)
+        new_bias = np.random.normal(size=weights[1].shape) / (self._grid_h * self._grid_w)
 
         layer.set_weights([new_kernel, new_bias])
 
@@ -73,17 +73,18 @@ class YOLO(object):
         self._class_scale = None
         self._debug = None
         self._warmup_batches = None
+        self.iout_threshold = 0.5
 
     def load_weights(self, weight_path):
         self._model.load_weights(weight_path)
 
-    def train(self, train_imgs,     # the list of images to train the model
-              valid_imgs,     # the list of images used to validate the model
-              train_times,    # the number of time to repeat the training set, often used for small datasets
-              valid_times,    # the number of times to repeat the validation set, often used for small datasets
-              nb_epochs,      # number of epoches
+    def train(self, train_imgs,  # the list of images to train the model
+              valid_imgs,  # the list of images used to validate the model
+              train_times,  # the number of time to repeat the training set, often used for small datasets
+              valid_times,  # the number of times to repeat the validation set, often used for small datasets
+              nb_epochs,  # number of epoches
               learning_rate,  # the learning rate
-              batch_size,     # the size of the batch
+              batch_size,  # the size of the batch
               warmup_epochs,  # number of initial batches to let the model familiarize with the new dataset
               object_scale,
               no_object_scale,
@@ -97,7 +98,8 @@ class YOLO(object):
               custom_callback=[],
               tb_logdir="./",
               train_generator_callback=None,
-              iout_threshold=0.5):
+              iou_threshold=0.5,
+              score_threshold=0.5):
 
         self._batch_size = batch_size
 
@@ -160,40 +162,41 @@ class YOLO(object):
         # Make a few callbacks
         ############################################
 
-        early_stop_cb = EarlyStopping(monitor='val_loss', 
+        early_stop_cb = EarlyStopping(monitor='val_loss',
                                       min_delta=0.001,
                                       patience=3,
                                       mode='min',
                                       verbose=1)
-        
-        tensorboard_cb = TensorBoard(log_dir=tb_logdir, 
+
+        tensorboard_cb = TensorBoard(log_dir=tb_logdir,
                                      histogram_freq=0,
                                      # write_batch_performance=True,
                                      write_graph=True,
                                      write_images=False)
 
         root, ext = os.path.splitext(saved_weights_name)
-        ckp_best_loss = ModelCheckpoint(root+"_bestLoss"+ext, 
+        ckp_best_loss = ModelCheckpoint(root + "_bestLoss" + ext,
                                         monitor='val_loss',
                                         verbose=1,
                                         save_best_only=True,
                                         mode='min',
                                         period=1)
-        ckp_saver = ModelCheckpoint(root+"_ckp"+ext, 
+        ckp_saver = ModelCheckpoint(root + "_ckp" + ext,
                                     verbose=1,
                                     period=10)
         map_evaluator_cb = self.MAPevaluation(self, valid_generator,
                                               save_best=True,
-                                              save_name=root+"_bestMap"+ext,
+                                              save_name=root + "_bestMap" + ext,
                                               tensorboard=tensorboard_cb,
-                                              iou_threshold=iout_threshold)
+                                              iou_threshold=iou_threshold,
+                                              score_threshold=score_threshold)
 
         if not isinstance(custom_callback, list):
             custom_callback = [custom_callback]
         callbacks = [ckp_best_loss, ckp_saver, tensorboard_cb, map_evaluator_cb] + custom_callback
         if early_stop:
             callbacks.append(early_stop_cb)
-        
+
         #############################
         # Start the training process
         #############################
@@ -211,7 +214,7 @@ class YOLO(object):
     def get_inference_model(self):
         return self._model
 
-    def predict(self, image):
+    def predict(self, image, iou_threshold=0.5, score_threshold=0.5):
 
         if len(image.shape) == 3 and self._gray_mode:
             if image.shape[2] == 3:
@@ -228,10 +231,10 @@ class YOLO(object):
             input_image = image[np.newaxis, :]
         else:
             input_image = image[np.newaxis, ..., np.newaxis]
-        
+
         netout = self._model.predict(input_image)[0]
-            
-        boxes = decode_netout(netout, self._anchors, self._nb_class)
+
+        boxes = decode_netout(netout, self._anchors, self._nb_class, score_threshold, iou_threshold)
 
         return boxes
 
@@ -247,18 +250,21 @@ class YOLO(object):
                 save_path       : The path to save images with visualized detections to.
             # Returns
                 A dict mapping class names to mAP scores.
-        """   
+        """
+
         def __init__(self, yolo, generator,
                      iou_threshold=0.5,
+                     score_threshold=0.5,
                      save_path=None,
                      period=1,
                      save_best=False,
                      save_name=None,
                      tensorboard=None):
-            
+
             self._yolo = yolo
             self._generator = generator
             self._iou_threshold = iou_threshold
+            self._score_threshold = score_threshold
             self._save_path = save_path
             self._period = period
             self._save_best = save_best
@@ -300,7 +306,7 @@ class YOLO(object):
             return _map, average_precisions
 
         def _calc_avg_precisions(self):
-             
+
             # gather all detections and annotations
             all_detections = [[None for _ in range(self._generator.num_classes())]
                               for _ in range(self._generator.size())]
@@ -312,35 +318,37 @@ class YOLO(object):
                 raw_height, raw_width, _ = raw_image.shape
 
                 # make the boxes and the labels
-                pred_boxes = self._yolo.predict(raw_image)
-                
+                pred_boxes = self._yolo.predict(raw_image,
+                                                iou_threshold=self._iou_threshold,
+                                                score_threshold=self._score_threshold)
+
                 score = np.array([box.score for box in pred_boxes])
-                pred_labels = np.array([box.label for box in pred_boxes])        
-                
+                pred_labels = np.array([box.label for box in pred_boxes])
+
                 if len(pred_boxes) > 0:
-                    pred_boxes = np.array([[box.xmin*raw_width, box.ymin*raw_height, box.xmax*raw_width,
-                                            box.ymax*raw_height, box.score] for box in pred_boxes])
+                    pred_boxes = np.array([[box.xmin * raw_width, box.ymin * raw_height, box.xmax * raw_width,
+                                            box.ymax * raw_height, box.score] for box in pred_boxes])
                 else:
-                    pred_boxes = np.array([[]])  
-                
+                    pred_boxes = np.array([[]])
+
                 # sort the boxes and the labels according to scores
                 score_sort = np.argsort(-score)
                 pred_labels = pred_labels[score_sort]
                 pred_boxes = pred_boxes[score_sort]
-                
+
                 # copy detections to all_detections
                 for label in range(self._generator.num_classes()):
                     all_detections[i][label] = pred_boxes[pred_labels == label, :]
-                    
+
                 annotations = self._generator.load_annotation(i)
-                
-                # copy detections to all_annotations
+
+                # copy ground truth to all_annotations
                 for label in range(self._generator.num_classes()):
                     all_annotations[i][label] = annotations[annotations[:, 4] == label, :4].copy()
                     
             # compute mAP by comparing all detections and all annotations
             average_precisions = {}
-            
+
             for label in range(self._generator.num_classes()):
                 false_positives = np.zeros((0,))
                 true_positives = np.zeros((0,))
@@ -395,4 +403,4 @@ class YOLO(object):
                 average_precision = compute_ap(recall, precision)
                 average_precisions[label] = average_precision
 
-            return average_precisions    
+            return average_precisions
