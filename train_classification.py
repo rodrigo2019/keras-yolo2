@@ -17,7 +17,7 @@ from keras.callbacks import TensorBoard
 from keras.callbacks import CSVLogger
 from keras.utils import Sequence
 from imgaug import augmenters as iaa
-from backend import BaseFeatureExtractor
+from keras_yolov2.backend import BaseFeatureExtractor
 from keras_yolov2.utils import list_images, import_feature_extractor, get_session, create_backup
 import cv2
 import numpy as np
