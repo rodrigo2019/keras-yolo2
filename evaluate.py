@@ -3,6 +3,7 @@ from keras_yolov2.preprocessing import parse_annotation_xml, parse_annotation_cs
 from keras_yolov2.preprocessing import BatchGenerator
 from keras_yolov2.utils import get_session
 from keras_yolov2.frontend import YOLO
+from keras_yolov2.map_evaluation import MapEvaluation
 import argparse
 import keras
 import json
@@ -145,8 +146,8 @@ def _main_(args):
                                          generator_config,
                                          norm=yolo._feature_extractor.normalize,
                                          jitter=False)
-        valid_eval = YOLO.MAPevaluation(yolo, valid_generator,
-                                        iou_threshold=args.iou)
+        valid_eval = MapEvaluation(yolo, valid_generator,
+                                   iou_threshold=args.iou)
 
         _map, average_precisions = valid_eval.evaluate_map()
         for label, average_precision in average_precisions.items():
@@ -157,8 +158,8 @@ def _main_(args):
                                      generator_config, 
                                      norm=yolo._feature_extractor.normalize,
                                      jitter=False)  
-    train_eval = YOLO.MAPevaluation(yolo, train_generator,
-                                    iou_threshold=args.iou)
+    train_eval = MapEvaluation(yolo, train_generator,
+                               iou_threshold=args.iou)
 
     _map, average_precisions = train_eval.evaluate_map()
     for label, average_precision in average_precisions.items():
