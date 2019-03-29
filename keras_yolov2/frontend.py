@@ -75,13 +75,9 @@ class YOLO(object):
         self._warmup_batches = None
         self.iout_threshold = 0.5
 
-    def load_weights(self, weight_path, only_weights=False):
-        if only_weights:
-            self._model.load_weights(weight_path)
-        else:
-            # hack: load generic loss instead
-            self._model = load_model(weight_path, custom_objects={"yolo_loss": keras.losses.mse})
-
+    def load_weights(self, weight_path):
+        self._model.load_weights(weight_path)
+        
     def train(self, train_imgs,  # the list of images to train the model
               valid_imgs,  # the list of images used to validate the model
               train_times,  # the number of time to repeat the training set, often used for small datasets

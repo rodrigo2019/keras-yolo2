@@ -47,7 +47,7 @@ def _main_(args):
                 anchors=config['model']['anchors'],
                 gray_mode=config['model']['gray_mode'])
 
-    yolo.load_weights(weights_path, only_weights=True)
+    yolo.load_weights(weights_path)
 
     inference_model = yolo.get_inference_model()
     inference_model.save("{}_inference.h5".format(os.path.split(weights_path)[0]))
