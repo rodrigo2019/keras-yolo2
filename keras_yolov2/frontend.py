@@ -2,12 +2,11 @@ from .yolo_loss import YoloLoss
 from .map_evaluation import MapEvaluation
 from .utils import decode_netout, import_feature_extractor, import_dynamically
 from .preprocessing import BatchGenerator
-from keras.models import Model, load_model
+from keras.models import Model
 from keras.layers import Reshape, Conv2D, Input
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 import numpy as np
-import keras
 import sys
 import cv2
 import os
@@ -73,11 +72,10 @@ class YOLO(object):
         self._class_scale = None
         self._debug = None
         self._warmup_batches = None
-        self.iout_threshold = 0.5
 
     def load_weights(self, weight_path):
         self._model.load_weights(weight_path)
-        
+
     def train(self, train_imgs,  # the list of images to train the model
               valid_imgs,  # the list of images used to validate the model
               train_times,  # the number of time to repeat the training set, often used for small datasets
