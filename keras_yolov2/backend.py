@@ -235,7 +235,7 @@ class MobileNetFeature(BaseFeatureExtractor):
     def __init__(self, input_size):
         input_image = Input(shape=input_size)
 
-        mobilenet = MobileNet(input_shape=(224, 224, 3), include_top=False)
+        mobilenet = MobileNet(input_shape=input_size, include_top=False)
         if input_size[2] == 3:
             try:
                 print("Loading pretrained weights: " + MOBILENET_BACKEND_PATH)
