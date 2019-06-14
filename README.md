@@ -72,7 +72,7 @@ The configuration file is a json file, which looks like this:
 ```python
 {
     "model" : {
-        "backend":             "Full Yolo",    # "Tiny Yolo" or "Full Yolo" or "MobileNet" or "SqueezeNet" or "Inception3"
+        "backend":              "Full Yolo",    # "Tiny Yolo" or "Full Yolo" or "MobileNet" or "SqueezeNet" or "Inception3"
         "input_size_w":         448,
         "input_size_h":         448,
         "gray_mode":            false,
