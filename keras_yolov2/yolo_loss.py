@@ -99,7 +99,7 @@ class YoloLoss(object):
         seen = tf.Variable(0.)
         seen = tf.assign_add(seen, 1.)
 
-        b_xy, box_wh, indicator_coord = tf.cond(tf.less(seen, self._warmup_epochs + 1),
+        b_xy, b_wh, indicator_coord = tf.cond(tf.less(seen, self._warmup_epochs + 1),
                                                 lambda: [b_xy + (0.5 + self.c_grid) * no_boxes_mask,
                                                          b_wh + tf.ones_like(b_wh) *
                                                          np.reshape(self.anchors, [1, 1, 1, self.nb_anchors, 2]) *
