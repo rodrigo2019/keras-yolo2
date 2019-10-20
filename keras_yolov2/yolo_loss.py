@@ -1,12 +1,11 @@
-from keras import backend as K
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
+from keras import backend as K
 
 EPSILON = 1e-7
 
 
 def calculate_ious(a1, a2, use_iou=True):
-
     if not use_iou:
         return a1[..., 4]
 
@@ -28,7 +27,7 @@ def calculate_ious(a1, a2, use_iou=True):
     a1_mins, a1_maxes, a1_wh = process_boxes(a1)
 
     # Intersection as min(Upper1, Upper2) - max(Lower1, Lower2)
-    intersect_mins = K.maximum(a2_mins,  a1_mins)
+    intersect_mins = K.maximum(a2_mins, a1_mins)
     intersect_maxes = K.minimum(a2_maxes, a1_maxes)
 
     # Getting the intersections in the xy (aka the width, height intersection)
@@ -50,7 +49,6 @@ class YoloLoss(object):
 
     def __init__(self, anchors, grid_size, batch_size, lambda_coord=5, lambda_noobj=1, lambda_obj=1, lambda_class=1,
                  iou_filter=0.6, warmup_epochs=3):
-
         self.__name__ = 'yolo_loss'
         self.iou_filter = iou_filter
         self.readjust_obj_score = False
@@ -62,7 +60,7 @@ class YoloLoss(object):
 
         self.batch_size = batch_size
         self.grid_size = grid_size
-        self.nb_anchors = len(anchors)//2
+        self.nb_anchors = len(anchors) // 2
         self.anchors = np.reshape(anchors, [1, 1, 1, self.nb_anchors, 2])
 
         self.c_grid = self._generate_yolo_grid(self.batch_size, self.grid_size, self.nb_anchors)
@@ -89,7 +87,6 @@ class YoloLoss(object):
         return K.concatenate([y_pred_xy, y_pred_wh, y_pred_conf, y_pred_class], axis=-1)
 
     def coord_loss(self, y_true, y_pred):
-
         b_xy_pred = y_pred[..., :2]
         b_wh_pred = y_pred[..., 2:4]
 
@@ -102,15 +99,15 @@ class YoloLoss(object):
         seen = tf.Variable(0.)
         seen = tf.assign_add(seen, 1.)
 
-        b_xy, box_wh, indicator_coord = tf.cond(tf.less(seen, self._warmup_epochs+1),
-                                              lambda: [b_xy + (0.5 + self.c_grid) * no_boxes_mask,
-                                                       b_wh + tf.ones_like(b_wh) * \
-                                                       np.reshape(self.anchors, [1,1,1,self.nb_anchors,2]) * \
-                                                       no_boxes_mask,
-                                                       tf.ones_like(indicator_coord)],
-                                              lambda: [b_xy,
-                                                       b_wh,
-                                                       indicator_coord])
+        b_xy, box_wh, indicator_coord = tf.cond(tf.less(seen, self._warmup_epochs + 1),
+                                                lambda: [b_xy + (0.5 + self.c_grid) * no_boxes_mask,
+                                                         b_wh + tf.ones_like(b_wh) * \
+                                                         np.reshape(self.anchors, [1, 1, 1, self.nb_anchors, 2]) * \
+                                                         no_boxes_mask,
+                                                         tf.ones_like(indicator_coord)],
+                                                lambda: [b_xy,
+                                                         b_wh,
+                                                         indicator_coord])
 
         loss_xy = K.sum(K.square(b_xy - b_xy_pred) * indicator_coord)
         loss_wh = K.sum(K.square(b_wh - b_wh_pred) * indicator_coord)
@@ -119,7 +116,6 @@ class YoloLoss(object):
         return (loss_wh + loss_xy) / 2
 
     def obj_loss(self, y_true, y_pred):
-
         b_o = calculate_ious(y_true, y_pred, use_iou=self.readjust_obj_score)
         b_o_pred = y_pred[..., 4]
 
@@ -132,11 +128,10 @@ class YoloLoss(object):
         indicator_obj = y_true[..., 4] * self.lambda_obj
         indicator_o = indicator_obj + indicator_noobj
 
-        loss_obj = K.sum(K.square(b_o-b_o_pred) * indicator_o)
+        loss_obj = K.sum(K.square(b_o - b_o_pred) * indicator_o)
         return loss_obj / 2
 
     def class_loss(self, y_true, y_pred):
-
         p_c_pred = K.softmax(y_pred[..., 5:])
         p_c = K.one_hot(K.argmax(y_true[..., 5:], axis=-1), 1)
         loss_class_arg = K.sum(K.square(p_c - p_c_pred), axis=-1)
@@ -161,7 +156,6 @@ class YoloLoss(object):
         return self.class_loss(y_true, self._transform_netout(y_pred_raw))
 
     def __call__(self, y_true, y_pred_raw):
-
         y_pred = self._transform_netout(y_pred_raw)
 
         total_coord_loss = self.coord_loss(y_true, y_pred)
