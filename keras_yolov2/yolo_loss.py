@@ -100,14 +100,14 @@ class YoloLoss(object):
         seen = tf.assign_add(seen, 1.)
 
         b_xy, b_wh, indicator_coord = tf.cond(tf.less(seen, self._warmup_epochs + 1),
-                                                lambda: [b_xy + (0.5 + self.c_grid) * no_boxes_mask,
-                                                         b_wh + tf.ones_like(b_wh) *
-                                                         np.reshape(self.anchors, [1, 1, 1, self.nb_anchors, 2]) *
-                                                         no_boxes_mask,
-                                                         tf.ones_like(indicator_coord)],
-                                                lambda: [b_xy,
-                                                         b_wh,
-                                                         indicator_coord])
+                                              lambda: [b_xy + (0.5 + self.c_grid) * no_boxes_mask,
+                                                       b_wh + tf.ones_like(b_wh) *
+                                                       np.reshape(self.anchors, [1, 1, 1, self.nb_anchors, 2]) *
+                                                       no_boxes_mask,
+                                                       tf.ones_like(indicator_coord)],
+                                              lambda: [b_xy,
+                                                       b_wh,
+                                                       indicator_coord])
 
         loss_xy = K.sum(K.square(b_xy - b_xy_pred) * indicator_coord)
         loss_wh = K.sum(K.square(b_wh - b_wh_pred) * indicator_coord)
