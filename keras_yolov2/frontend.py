@@ -153,7 +153,7 @@ class YOLO(object):
         optimizer = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
         loss_yolo = YoloLoss(self._anchors, (self._grid_w, self._grid_h), self._batch_size,
                              lambda_coord=coord_scale, lambda_noobj=no_object_scale, lambda_obj=object_scale,
-                             lambda_class=class_scale)
+                             lambda_class=class_scale, warmup_epochs=warmup_epochs)
         self._model.compile(loss=loss_yolo, optimizer=optimizer)
 
         ############################################
