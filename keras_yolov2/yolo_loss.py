@@ -48,7 +48,7 @@ def calculate_ious(a1, a2, use_iou=True):
 class YoloLoss(object):
 
     def __init__(self, anchors, grid_size, batch_size, lambda_coord=5, lambda_noobj=1, lambda_obj=1, lambda_class=1,
-                 iou_filter=0.6, warmup_epochs=3):
+                 iou_filter=0.6, warmup_batches=3):
         self.__name__ = 'yolo_loss'
         self.iou_filter = iou_filter
         self.readjust_obj_score = False
@@ -65,7 +65,7 @@ class YoloLoss(object):
 
         self.c_grid = self._generate_yolo_grid(self.batch_size, self.grid_size, self.nb_anchors)
 
-        self._warmup_epochs = warmup_epochs
+        self._warmup_batches = warmup_batches
 
     @staticmethod
     def _generate_yolo_grid(batch_size, grid_size, nb_box):
@@ -99,7 +99,7 @@ class YoloLoss(object):
         seen = tf.Variable(0.)
         seen = tf.assign_add(seen, 1.)
 
-        b_xy, b_wh, indicator_coord = tf.cond(tf.less(seen, self._warmup_epochs + 1),
+        b_xy, b_wh, indicator_coord = tf.cond(tf.less(seen, self._warmup_batches + 1),
                                               lambda: [b_xy + (0.5 + self.c_grid) * no_boxes_mask,
                                                        b_wh + tf.ones_like(b_wh) *
                                                        np.reshape(self.anchors, [1, 1, 1, self.nb_anchors, 2]) *
