@@ -1,25 +1,28 @@
-from .utils import BoundBox, bbox_iou
+import copy
+import os
+import xml.etree.ElementTree as et
+
+import cv2
+import imgaug as ia
+import numpy as np
 from imgaug import augmenters as iaa
 from keras.utils import Sequence
 from tqdm import tqdm
-import xml.etree.ElementTree as et
-import numpy as np
-import copy
-import cv2
-import os
+
+from .utils import BoundBox, bbox_iou
 
 
 def parse_annotation_xml(ann_dir, img_dir, labels=[]):
     # This parser is utilized on VOC dataset
     all_imgs = []
     seen_labels = {}
-    
+
     ann_files = os.listdir(ann_dir)
     for ann in tqdm(sorted(ann_files)):
         img = {'object': []}
 
         tree = et.parse(os.path.join(ann_dir, ann))
-        
+
         for elem in tree.iter():
             if 'filename' in elem.tag:
                 img['filename'] = os.path.join(img_dir, elem.text)
@@ -29,7 +32,7 @@ def parse_annotation_xml(ann_dir, img_dir, labels=[]):
                 img['height'] = int(elem.text)
             if 'object' in elem.tag or 'part' in elem.tag:
                 obj = {}
-                
+
                 for attr in list(elem):
                     if 'name' in attr.tag:
                         obj['name'] = attr.text
@@ -38,12 +41,12 @@ def parse_annotation_xml(ann_dir, img_dir, labels=[]):
                             seen_labels[obj['name']] += 1
                         else:
                             seen_labels[obj['name']] = 1
-                        
+
                         if len(labels) > 0 and obj['name'] not in labels:
                             break
                         else:
                             img['object'] += [obj]
-                            
+
                     if 'bndbox' in attr.tag:
                         for dim in list(attr):
                             if 'xmin' in dim.tag:
@@ -57,7 +60,7 @@ def parse_annotation_xml(ann_dir, img_dir, labels=[]):
 
         if len(img['object']) > 0:
             all_imgs += [img]
-                        
+
     return all_imgs, seen_labels
 
 
@@ -79,7 +82,7 @@ def parse_annotation_csv(csv_file, labels=[], base_path=""):
             try:
                 fname, xmin, ymin, xmax, ymax, obj_name = line.strip().split(",")
                 fname = os.path.join(base_path, fname)
-                
+
                 image = cv2.imread(fname)
                 height, width, _ = image.shape
 
@@ -120,7 +123,7 @@ def parse_annotation_csv(csv_file, labels=[], base_path=""):
                     seen_labels[obj_name] += 1
 
             except:
-                print("Exception occured at line {} from {}".format(i+1, csv_file))
+                print("Exception occured at line {} from {}".format(i + 1, csv_file))
                 raise
     return all_imgs, seen_labels
 
@@ -137,7 +140,7 @@ class BatchGenerator(Sequence):
         self._callback = callback
 
         self._anchors = [BoundBox(0, 0, config['ANCHORS'][2 * i], config['ANCHORS'][2 * i + 1])
-                         for i in range(int(len(config['ANCHORS'])//2))]
+                         for i in range(int(len(config['ANCHORS']) // 2))]
 
         # augmentors by https://github.com/aleju/imgaug
         sometimes = lambda aug: iaa.Sometimes(0.5, aug)
@@ -149,11 +152,11 @@ class BatchGenerator(Sequence):
         self._aug_pipe = iaa.Sequential(
             [
                 # apply the following augmenters to most images
-                # iaa.Fliplr(0.5), # horizontally flip 50% of all images
-                # iaa.Flipud(0.2), # vertically flip 20% of all images
+                iaa.Fliplr(0.5),  # horizontally flip 50% of all images
+                iaa.Flipud(0.2),  # vertically flip 20% of all images
                 # sometimes(iaa.Crop(percent=(0, 0.1))), # crop images by 0-10% of their height/width
                 sometimes(iaa.Affine(
-                    # scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # scale images to 80-120% of their size, per axis
+                    scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # scale images to 80-120% of their size, per axis
                     # translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent
                     # rotate=(-5, 5), # rotate by -45 to +45 degrees
                     # shear=(-5, 5), # shear by -16 to +16 degrees
@@ -164,32 +167,35 @@ class BatchGenerator(Sequence):
                 # execute 0 to 5 of the following (less important) augmenters per image
                 # don't execute all of them, as that would often be way too strong
                 iaa.SomeOf((0, 5),
-                    [
-                        # sometimes(iaa.Superpixels(p_replace=(0, 1.0), n_segments=(20, 200))),
-                        iaa.OneOf([
-                            iaa.GaussianBlur((0, 3.0)),  # blur images with a sigma between 0 and 3.0
-                            iaa.AverageBlur(k=(2, 7)),  # blur image using local means (kernel sizes between 2 and 7)
-                            iaa.MedianBlur(k=(3, 11)),  # blur image using local medians (kernel sizes between 2 and 7)
-                        ]),
-                        iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),  # sharpen images
-                        # iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)), # emboss images
-                        # search either for all edges or for directed edges
-                        # sometimes(iaa.OneOf([
-                        #    iaa.EdgeDetect(alpha=(0, 0.7)),
-                        #    iaa.DirectedEdgeDetect(alpha=(0, 0.7), direction=(0.0, 1.0)),
-                        # ])),
-                        iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255), per_channel=0.5),  # add gaussian noise
-                        iaa.OneOf([
-                            iaa.Dropout((0.01, 0.1), per_channel=0.5),  # randomly remove up to 10% of the pixels
-                            # iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
-                        ]),
-                        # iaa.Invert(0.05, per_channel=True), # invert color channels
-                        iaa.Add((-10, 10), per_channel=0.5),  # change brightness of images
-                        iaa.Multiply((0.5, 1.5), per_channel=0.5),  # change brightness of images
-                        iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
-                    ],
-                    random_order=True
-                )
+                           [
+                               # sometimes(iaa.Superpixels(p_replace=(0, 1.0), n_segments=(20, 200))),
+                               iaa.OneOf([
+                                   iaa.GaussianBlur((0, 3.0)),  # blur images with a sigma between 0 and 3.0
+                                   iaa.AverageBlur(k=(2, 7)),
+                                   # blur image using local means (kernel sizes between 2 and 7)
+                                   iaa.MedianBlur(k=(3, 11)),
+                                   # blur image using local medians (kernel sizes between 2 and 7)
+                               ]),
+                               iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),  # sharpen images
+                               # iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)), # emboss images
+                               # search either for all edges or for directed edges
+                               # sometimes(iaa.OneOf([
+                               #    iaa.EdgeDetect(alpha=(0, 0.7)),
+                               #    iaa.DirectedEdgeDetect(alpha=(0, 0.7), direction=(0.0, 1.0)),
+                               # ])),
+                               iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5),
+                               # add gaussian noise
+                               iaa.OneOf([
+                                   iaa.Dropout((0.01, 0.1), per_channel=0.5),  # randomly remove up to 10% of the pixels
+                                   # iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
+                               ]),
+                               # iaa.Invert(0.05, per_channel=True), # invert color channels
+                               iaa.Add((-10, 10), per_channel=0.5),  # change brightness of images
+                               iaa.Multiply((0.5, 1.5), per_channel=0.5),  # change brightness of images
+                               iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
+                           ],
+                           random_order=True
+                           )
             ],
             random_order=True
         )
@@ -229,8 +235,8 @@ class BatchGenerator(Sequence):
         return image
 
     def __getitem__(self, idx):
-        l_bound = idx*self._config['BATCH_SIZE']
-        r_bound = (idx+1)*self._config['BATCH_SIZE']
+        l_bound = idx * self._config['BATCH_SIZE']
+        r_bound = (idx + 1) * self._config['BATCH_SIZE']
 
         if r_bound > len(self._images):
             r_bound = len(self._images)
@@ -251,9 +257,9 @@ class BatchGenerator(Sequence):
 
             for obj in all_objs:
                 if obj['xmax'] > obj['xmin'] and obj['ymax'] > obj['ymin'] and obj['name'] in self._config['LABELS']:
-                    center_x = .5*(obj['xmin'] + obj['xmax'])
+                    center_x = .5 * (obj['xmin'] + obj['xmax'])
                     center_x = center_x / (float(self._config['IMAGE_W']) / self._config['GRID_W'])
-                    center_y = .5*(obj['ymin'] + obj['ymax'])
+                    center_y = .5 * (obj['ymin'] + obj['ymax'])
                     center_y = center_y / (float(self._config['IMAGE_H']) / self._config['GRID_H'])
 
                     grid_x = int(np.floor(center_x))
@@ -261,26 +267,28 @@ class BatchGenerator(Sequence):
 
                     if grid_x < self._config['GRID_W'] and grid_y < self._config['GRID_H']:
                         obj_indx = self._config['LABELS'].index(obj['name'])
-                        
-                        center_w = (obj['xmax'] - obj['xmin'])/(float(self._config['IMAGE_W'])/self._config['GRID_W'])
-                        center_h = (obj['ymax'] - obj['ymin'])/(float(self._config['IMAGE_H'])/self._config['GRID_H'])
-                        
+
+                        center_w = (obj['xmax'] - obj['xmin']) / (
+                                    float(self._config['IMAGE_W']) / self._config['GRID_W'])
+                        center_h = (obj['ymax'] - obj['ymin']) / (
+                                    float(self._config['IMAGE_H']) / self._config['GRID_H'])
+
                         box = [center_x, center_y, center_w, center_h]
 
                         # find the anchor that best predicts this box
                         best_anchor = -1
                         max_iou = -1
-                        
+
                         shifted_box = BoundBox(0, 0, center_w, center_h)
-                        
+
                         for i in range(len(self._anchors)):
                             anchor = self._anchors[i]
                             iou = bbox_iou(shifted_box, anchor)
-                            
+
                             if max_iou < iou:
                                 best_anchor = i
                                 max_iou = iou
-                                
+
                         # assign ground truth x, y, w, h, confidence and class probs to y_batch
                         y_batch[instance_count, grid_y, grid_x, best_anchor, 0:4] = box
                         y_batch[instance_count, grid_y, grid_x, best_anchor, 4] = 1.
@@ -295,12 +303,12 @@ class BatchGenerator(Sequence):
                     if obj['xmax'] > obj['xmin'] and obj['ymax'] > obj['ymin']:
                         cv2.rectangle(img[..., ::-1], (obj['xmin'], obj['ymin']), (obj['xmax'], obj['ymax']),
                                       (255, 0, 0), 3)
-                        cv2.putText(img[..., ::-1], obj['name'], (obj['xmin']+2, obj['ymin']+12), 0,
-                                    1.2e-3*img.shape[0], (0, 255, 0), 2)
-                        
+                        cv2.putText(img[..., ::-1], obj['name'], (obj['xmin'] + 2, obj['ymin'] + 12), 0,
+                                    1.2e-3 * img.shape[0], (0, 255, 0), 2)
+
                 x_batch[instance_count] = img
             # increase instance counter in current batch
-            instance_count += 1  
+            instance_count += 1
 
         return x_batch, y_batch
 
@@ -327,26 +335,37 @@ class BatchGenerator(Sequence):
         all_objs = copy.deepcopy(train_instance['object'])
 
         if jitter:
-            # scale the image
-            scale = np.random.uniform() / 10. + 1.
-            image = cv2.resize(image, (0, 0), fx=scale, fy=scale)
+            keypoints = []
+            for obj in all_objs:
+                xmin = obj['xmin']
+                ymin = obj['ymin']
+                xmax = obj['xmax']
+                ymax = obj['ymax']
+                keypoints.append(ia.Keypoint(x=xmin, y=ymin))
+                keypoints.append(ia.Keypoint(x=xmax, y=ymin))
+                keypoints.append(ia.Keypoint(x=xmax, y=ymax))
+                keypoints.append(ia.Keypoint(x=xmin, y=ymax))
+            keypoints_on_image = ia.KeypointsOnImage(keypoints, shape=image.shape)
+            seq_det = self._aug_pipe.to_deterministic()
+            image = seq_det.augment_image(image)
+            if len(all_objs) != 0:
+                keypoints_aug = seq_det.augment_keypoints([keypoints_on_image])
+                coords = keypoints_aug[0].get_coords_array()
+                for i in range(0, len(coords), 4):
+                    xa = coords[i, 0]
+                    ya = coords[i, 1]
+                    xb = coords[i + 1, 0]
+                    yb = coords[i + 1, 1]
+                    xc = coords[i + 2, 0]
+                    yc = coords[i + 2, 1]
+                    xd = coords[i + 3, 0]
+                    yd = coords[i + 3, 1]
+                    all_objs[i // 4]['xmin'] = max(min(xa, xb, xc, xd), 0)
+                    all_objs[i // 4]['xmax'] = min(max(xa, xb, xc, xd), image.shape[1] - 1)
+                    all_objs[i // 4]['ymin'] = max(min(ya, yb, yc, yd), 0)
+                    all_objs[i // 4]['ymax'] = min(max(ya, yb, yc, yd), image.shape[0] - 1)
 
-            # translate the image
-            max_offx = (scale-1.) * w
-            max_offy = (scale-1.) * h
-            offx = int(np.random.uniform() * max_offx)
-            offy = int(np.random.uniform() * max_offy)
-            
-            image = image[offy: (offy + h), offx: (offx + w)]
-
-            # flip the image
-            flip = np.random.binomial(1, .5)
-            if flip > 0.5:
-                image = cv2.flip(image, 1)
-                
-            image = self._aug_pipe.augment_image(image)
-            
-        # resize the image to standard size
+                    # resize the image to standard size
         image = cv2.resize(image, (self._config['IMAGE_W'], self._config['IMAGE_H']))
         if self._config['IMAGE_C'] == 1:
             image = image[..., np.newaxis]
@@ -355,20 +374,11 @@ class BatchGenerator(Sequence):
         # fix object's position and size
         for obj in all_objs:
             for attr in ['xmin', 'xmax']:
-                if jitter:
-                    obj[attr] = int(obj[attr] * scale - offx)
-                    
                 obj[attr] = int(obj[attr] * float(self._config['IMAGE_W']) / w)
                 obj[attr] = max(min(obj[attr], self._config['IMAGE_W']), 0)
-                
+
             for attr in ['ymin', 'ymax']:
-                if jitter: obj[attr] = int(obj[attr] * scale - offy)
-                    
                 obj[attr] = int(obj[attr] * float(self._config['IMAGE_H']) / h)
                 obj[attr] = max(min(obj[attr], self._config['IMAGE_H']), 0)
 
-            if jitter and flip > 0.5:
-                xmin = obj['xmin']
-                obj['xmin'] = self._config['IMAGE_W'] - obj['xmax']
-                obj['xmax'] = self._config['IMAGE_W'] - xmin
         return image, all_objs
