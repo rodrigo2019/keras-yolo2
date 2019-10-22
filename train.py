@@ -131,7 +131,8 @@ def _main_(args):
                train_generator_callback=config['train']['callback'],
                iou_threshold=config['valid']['iou_threshold'],
                score_threshold=config['valid']['score_threshold'],
-               look_ahead=config['train']['look_ahead'])
+               look_ahead=config['train']['look_ahead'],
+               cosine_decay=config['train']['cosine_decay'])
 
 
 if __name__ == '__main__':

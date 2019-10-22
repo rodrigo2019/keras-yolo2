@@ -3,6 +3,7 @@ from .map_evaluation import MapEvaluation
 from .utils import decode_netout, import_feature_extractor, import_dynamically
 from .preprocessing import BatchGenerator
 from .optimizers import RAdam, Lookahead
+from .cosine_decay import WarmUpCosineDecayScheduler
 from keras.models import Model
 from keras.layers import Reshape, Conv2D, Input
 from keras.optimizers import Adam
@@ -99,7 +100,8 @@ class YOLO(object):
               train_generator_callback=None,
               iou_threshold=0.5,
               score_threshold=0.5,
-              look_ahead=False):
+              look_ahead=False,
+              cosine_decay=False):
 
         self._batch_size = batch_size
 
@@ -199,11 +201,22 @@ class YOLO(object):
                                          iou_threshold=iou_threshold,
                                          score_threshold=score_threshold)
 
+        if cosine_decay:
+            total_steps = int(nb_epochs * len(train_generator) / batch_size)
+            warmup_steps = int(warmup_epochs * len(train_generator) / batch_size)
+            warm_up_lr = WarmUpCosineDecayScheduler(learning_rate_base=learning_rate,
+                                                    total_steps=total_steps,
+                                                    warmup_learning_rate=0.0,
+                                                    warmup_steps=warmup_steps,
+                                                    hold_base_rate_steps=0)
+
         if not isinstance(custom_callback, list):
             custom_callback = [custom_callback]
         callbacks = [ckp_best_loss, ckp_saver, tensorboard_cb, map_evaluator_cb] + custom_callback
         if early_stop:
             callbacks.append(early_stop_cb)
+        if cosine_decay:
+            callbacks.append(warm_up_lr)
 
         #############################
         # Start the training process
