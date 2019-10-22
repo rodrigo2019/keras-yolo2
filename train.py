@@ -130,7 +130,8 @@ def _main_(args):
                tb_logdir=config['train']['tensorboard_log_dir'],
                train_generator_callback=config['train']['callback'],
                iou_threshold=config['valid']['iou_threshold'],
-               score_threshold=config['valid']['score_threshold'])
+               score_threshold=config['valid']['score_threshold'],
+               look_ahead=config['train']['look_ahead'])
 
 
 if __name__ == '__main__':
