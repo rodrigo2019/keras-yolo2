@@ -103,20 +103,20 @@ class YoloLoss(object):
 
     def obj_loss(self, y_true, y_pred):
         # TODO: should make a review in this part
-        b_o_true = calculate_ious(y_true, y_pred, use_iou=self.readjust_obj_score)
-        b_o_pred = y_pred[..., 4]
+        obj_conf_true = y_true[..., 4]
+        obj_conf_pred = y_pred[..., 4]
 
         num_true_labels = self.grid_size[0] * self.grid_size[1] * self.nb_anchors
-        y_true_p = K.reshape(y_true[..., :4], shape=(self.batch_size, 1, 1, 1, num_true_labels, 4))
-        iou_scores_buff = calculate_ious(y_true_p, K.expand_dims(y_pred, axis=4))
+        y_true_coords = K.reshape(y_true[..., :4], shape=(self.batch_size, 1, 1, 1, num_true_labels, 4))
+        iou_scores_buff = calculate_ious(y_true_coords, K.expand_dims(y_pred, axis=4))
         best_ious = K.max(iou_scores_buff, axis=4)
 
         indicator_noobj = K.cast(best_ious < self.iou_filter, np.float32) * (1 - y_true[..., 4]) * self.lambda_noobj
         indicator_obj = y_true[..., 4] * self.lambda_obj
-        indicator_o = indicator_obj + indicator_noobj
+        indicator_obj_noobj = indicator_obj + indicator_noobj
 
-        loss_obj = K.sum(K.square(b_o_true-b_o_pred) * indicator_o)
-        return loss_obj / 2
+        loss_obj = K.sum(K.square(obj_conf_true-obj_conf_pred) * indicator_obj_noobj)
+        return loss_obj
 
     def class_loss(self, y_true, y_pred):
         # TODO: should we use focal loss?
