@@ -91,20 +91,19 @@ class YoloLoss(object):
         b_xy_pred = y_pred[..., :2]
         b_wh_pred = y_pred[..., 2:4]
         
-        b_xy = y_true[..., 0:2]
-        b_wh = y_true[..., 2:4]
+        b_xy_true = y_true[..., 0:2]
+        b_wh_true = y_true[..., 2:4]
 
-        indicator_coord = K.expand_dims(y_true[..., 4], axis=-1) * self.lambda_coord
+        indicator_coord = K.expand_dims(y_true[..., 4], axis=-1)
 
-        loss_xy = K.sum(K.square(b_xy - b_xy_pred) * indicator_coord)
-        loss_wh = K.sum(K.square(b_wh - b_wh_pred) * indicator_coord)
-        # loss_wh = K.sum(K.square(K.sqrt(b_wh) - K.sqrt(b_wh_pred)) * indicator_coord)#, axis=[1,2,3,4])
+        loss_xy = K.sum(K.square(b_xy_true - b_xy_pred) * indicator_coord) * self.lambda_coord
+        loss_wh = K.sum(K.square(K.sqrt(b_wh_true) - K.sqrt(b_wh_pred)) * indicator_coord) * self.lambda_coord
 
-        return (loss_wh + loss_xy) / 2
+        return loss_wh + loss_xy
 
     def obj_loss(self, y_true, y_pred):
-
-        b_o = calculate_ious(y_true, y_pred, use_iou=self.readjust_obj_score)
+        # TODO: should make a review in this part
+        b_o_true = calculate_ious(y_true, y_pred, use_iou=self.readjust_obj_score)
         b_o_pred = y_pred[..., 4]
 
         num_true_labels = self.grid_size[0] * self.grid_size[1] * self.nb_anchors
@@ -116,18 +115,14 @@ class YoloLoss(object):
         indicator_obj = y_true[..., 4] * self.lambda_obj
         indicator_o = indicator_obj + indicator_noobj
 
-        loss_obj = K.sum(K.square(b_o-b_o_pred) * indicator_o)
+        loss_obj = K.sum(K.square(b_o_true-b_o_pred) * indicator_o)
         return loss_obj / 2
 
     def class_loss(self, y_true, y_pred):
-
+        # TODO: should we use focal loss?
         p_c_pred = K.softmax(y_pred[..., 5:])
-        p_c = K.one_hot(K.argmax(y_true[..., 5:], axis=-1), 1)
-        loss_class_arg = K.sum(K.square(p_c - p_c_pred), axis=-1)
-        
-        # b_class = K.argmax(y_true[..., 5:], axis=-1)
-        # b_class_pred = y_pred[..., 5:]
-        # loss_class_arg = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=b_class, logits=b_class_pred)
+        p_c_true = K.one_hot(K.argmax(y_true[..., 5:], axis=-1), 1)
+        loss_class_arg = K.sum(K.square(p_c_true - p_c_pred), axis=-1)
 
         indicator_class = y_true[..., 4] * self.lambda_class
 
