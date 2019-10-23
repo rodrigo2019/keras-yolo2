@@ -243,10 +243,8 @@ class BatchGenerator(Sequence):
             l_bound = r_bound - self._config['BATCH_SIZE']
 
         instance_count = 0
-        if self._config['IMAGE_C'] == 3:
-            x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'], 3))  # input images
-        else:
-            x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'], 1))
+        x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'],
+                            self._config['IMAGE_C']))  # input images
 
         y_batch = np.zeros((r_bound - l_bound, self._config['GRID_H'], self._config['GRID_W'], self._config['BOX'],
                             4 + 1 + len(self._config['LABELS'])))  # desired network output
@@ -256,43 +254,48 @@ class BatchGenerator(Sequence):
             img, all_objs = self.aug_image(train_instance, jitter=self._jitter)
 
             for obj in all_objs:
+                # check if it is a valid annotion
                 if obj['xmax'] > obj['xmin'] and obj['ymax'] > obj['ymin'] and obj['name'] in self._config['LABELS']:
-                    center_x = .5 * (obj['xmin'] + obj['xmax'])
-                    center_x = center_x / (float(self._config['IMAGE_W']) / self._config['GRID_W'])
-                    center_y = .5 * (obj['ymin'] + obj['ymax'])
-                    center_y = center_y / (float(self._config['IMAGE_H']) / self._config['GRID_H'])
+                    scale_w = float(self._config['IMAGE_W']) / self._config['GRID_W']
+                    scale_h = float(self._config['IMAGE_H']) / self._config['GRID_H']
+                    # get which grid cell it is from
+                    obj_center_x = (obj['xmin'] + obj['xmax']) / 2
+                    obj_center_x = obj_center_x / scale_w
+                    obj_center_y = (obj['ymin'] + obj['ymax']) / 2
+                    obj_center_y = obj_center_y / scale_h
 
-                    grid_x = int(np.floor(center_x))
-                    grid_y = int(np.floor(center_y))
+                    obj_grid_x = int(np.floor(obj_center_x))
+                    obj_grid_y = int(np.floor(obj_center_y))
 
-                    if grid_x < self._config['GRID_W'] and grid_y < self._config['GRID_H']:
+                    if obj_grid_x < self._config['GRID_W'] and obj_grid_y < self._config['GRID_H']:
                         obj_indx = self._config['LABELS'].index(obj['name'])
 
-                        center_w = (obj['xmax'] - obj['xmin']) / (
-                                    float(self._config['IMAGE_W']) / self._config['GRID_W'])
-                        center_h = (obj['ymax'] - obj['ymin']) / (
-                                    float(self._config['IMAGE_H']) / self._config['GRID_H'])
+                        obj_w = (obj['xmax'] - obj['xmin']) / scale_w
+                        obj_h = (obj['ymax'] - obj['ymin']) / scale_h
 
-                        box = [center_x, center_y, center_w, center_h]
+                        box = [obj_center_x, obj_center_y, obj_w, obj_h]
 
                         # find the anchor that best predicts this box
-                        best_anchor = -1
+                        # TODO: the is a problem, because if 2 objs has the same proportion, they will share the same
+                        # anchor, so the last one will overwrite the y_batch. Probably the best situation is create
+                        # a rank to populate the anchors positions
+                        best_anchor_idx = -1
                         max_iou = -1
 
-                        shifted_box = BoundBox(0, 0, center_w, center_h)
+                        shifted_box = BoundBox(0, 0, obj_w, obj_h)
 
                         for i in range(len(self._anchors)):
                             anchor = self._anchors[i]
                             iou = bbox_iou(shifted_box, anchor)
 
                             if max_iou < iou:
-                                best_anchor = i
+                                best_anchor_idx = i
                                 max_iou = iou
 
                         # assign ground truth x, y, w, h, confidence and class probs to y_batch
-                        y_batch[instance_count, grid_y, grid_x, best_anchor, 0:4] = box
-                        y_batch[instance_count, grid_y, grid_x, best_anchor, 4] = 1.
-                        y_batch[instance_count, grid_y, grid_x, best_anchor, 5 + obj_indx] = 1
+                        y_batch[instance_count, obj_grid_y, obj_grid_x, best_anchor_idx, 0:4] = box
+                        y_batch[instance_count, obj_grid_y, obj_grid_x, best_anchor_idx, 4] = 1.
+                        y_batch[instance_count, obj_grid_y, obj_grid_x, best_anchor_idx, 4 + 1 + obj_indx] = 1
 
             # assign input image to x_batch
             if self._norm is not None:
