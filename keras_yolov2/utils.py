@@ -109,16 +109,16 @@ def decode_netout(netout, anchors, nb_class, obj_threshold=0.5, nms_threshold=0.
 
     # decode the output by the network
     netout[..., 4] = _sigmoid(netout[..., 4])
-    netout[..., 5:] = netout[..., 4][..., np.newaxis] * _softmax(netout[..., 5:])
-    netout[..., 5:] *= netout[..., 5:] > obj_threshold
+    netout[..., 5:] = _softmax(netout[..., 5:])
 
     for row in range(grid_h):
         for col in range(grid_w):
             for b in range(nb_box):
                 # from 4th element onwards are confidence and class classes
                 classes = netout[row, col, b, 5:]
+                confidence = netout[row, col, b, 4]
 
-                if np.sum(classes) > 0:
+                if confidence >= obj_threshold:
                     # first 4 elements are x, y, w, and h
                     x, y, w, h = netout[row, col, b, :4]
 
@@ -126,10 +126,8 @@ def decode_netout(netout, anchors, nb_class, obj_threshold=0.5, nms_threshold=0.
                     y = (row + _sigmoid(y)) / grid_h  # center position, unit: image height
                     w = anchors[2 * b + 0] * np.exp(w) / grid_w  # unit: image width
                     h = anchors[2 * b + 1] * np.exp(h) / grid_h  # unit: image height
-                    confidence = netout[row, col, b, 4]
 
                     box = BoundBox(x - w / 2, y - h / 2, x + w / 2, y + h / 2, confidence, classes)
-
                     boxes.append(box)
 
     # suppress non-maximal boxes
