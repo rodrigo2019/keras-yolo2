@@ -249,6 +249,8 @@ class BatchGenerator(Sequence):
         y_batch = np.zeros((r_bound - l_bound, self._config['GRID_H'], self._config['GRID_W'], self._config['BOX'],
                             4 + 1 + len(self._config['LABELS'])))  # desired network output
 
+        anchors_populated_map = np.zeros((r_bound - l_bound, self._config['GRID_H'], self._config['GRID_W'],
+                                          self._config['BOX'],))
         for train_instance in self._images[l_bound:r_bound]:
             # augment input image and fix object's position and size
             img, all_objs = self.aug_image(train_instance, jitter=self._jitter)
@@ -293,9 +295,9 @@ class BatchGenerator(Sequence):
                                 max_iou = iou
 
                         # assign ground truth x, y, w, h, confidence and class probs to y_batch
-                        y_batch[instance_count, obj_grid_y, obj_grid_x, best_anchor_idx, 0:4] = box
-                        y_batch[instance_count, obj_grid_y, obj_grid_x, best_anchor_idx, 4] = 1.
-                        y_batch[instance_count, obj_grid_y, obj_grid_x, best_anchor_idx, 4 + 1 + obj_indx] = 1
+                        self._change_obj_position(y_batch, anchors_populated_map,
+                                                  [instance_count, obj_grid_y, obj_grid_x, best_anchor_idx, obj_indx],
+                                                  box, max_iou)
 
             # assign input image to x_batch
             if self._norm is not None:
@@ -314,6 +316,34 @@ class BatchGenerator(Sequence):
             instance_count += 1
 
         return x_batch, y_batch
+
+    def _change_obj_position(self, y_batch, anchors_map, idx, box, iou):
+        if anchors_map[idx[0], idx[1], idx[2], idx[3]] < iou:
+            bkp_box = y_batch[idx[0], idx[1], idx[2], idx[3], 0:4]
+
+            anchors_map[idx[0], idx[1], idx[2], idx[3]] = iou
+            y_batch[idx[0], idx[1], idx[2], idx[3], 0:4] = box
+            y_batch[idx[0], idx[1], idx[2], idx[3], 4] = 1.
+            y_batch[idx[0], idx[1], idx[2], idx[3], 5:] = 0  # clear old values
+            y_batch[idx[0], idx[1], idx[2], idx[3], 4 + 1 + idx[4]] = 1
+
+            shifted_box = BoundBox(0, 0, bkp_box[2], bkp_box[3])
+
+            for i in range(len(self._anchors)):
+                anchor = self._anchors[i]
+                iou = bbox_iou(shifted_box, anchor)
+                if iou > anchors_map[idx[0], idx[1], idx[2], i]:
+                    self._change_obj_position(y_batch, anchors_map, [idx[0], idx[1], idx[2], i, idx[4]], bkp_box, iou)
+                    break
+        else:
+            shifted_box = BoundBox(0, 0, box[2], box[3])
+
+            for i in range(len(self._anchors)):
+                anchor = self._anchors[i]
+                iou = bbox_iou(shifted_box, anchor)
+                if iou > anchors_map[idx[0], idx[1], idx[2], i]:
+                    self._change_obj_position(y_batch, anchors_map, [idx[0], idx[1], idx[2], i, idx[4]], box, iou)
+                    break
 
     def on_epoch_end(self):
         if self._shuffle:
