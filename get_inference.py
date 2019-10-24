@@ -50,7 +50,7 @@ def _main_(args):
     yolo.load_weights(weights_path)
 
     inference_model = yolo.get_inference_model()
-    inference_model.save("{}_inference.h5".format(os.path.split(weights_path)[0]))
+    inference_model.save("{}_inference.h5".format(os.path.splitext(weights_path)[0]))
 
 
 if __name__ == '__main__':
