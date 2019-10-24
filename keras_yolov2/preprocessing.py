@@ -158,8 +158,8 @@ class BatchGenerator(Sequence):
                 sometimes(iaa.Affine(
                     scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},  # scale images to 80-120% of their size, per axis
                     translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},  # translate by -20 to +20 percent
-                    rotate=(-20, 20), # rotate by -45 to +45 degrees
-                    shear=(-5, 5), # shear by -16 to +16 degrees
+                    rotate=(-20, 20),  # rotate by -45 to +45 degrees
+                    shear=(-5, 5),  # shear by -16 to +16 degrees
                     # order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
                     # cval=(0, 255), # if mode is constant, use a cval between 0 and 255
                     # mode=ia.ALL # use any of scikit-image's warping modes (see 2nd image from the top for examples)
@@ -278,9 +278,7 @@ class BatchGenerator(Sequence):
                         box = [obj_center_x, obj_center_y, obj_w, obj_h]
 
                         # find the anchor that best predicts this box
-                        # TODO: the is a problem, because if 2 objs has the same proportion, they will share the same
-                        # anchor, so the last one will overwrite the y_batch. Probably the best situation is create
-                        # a rank to populate the anchors positions
+                        # TODO: check f this part below is working correctly
                         best_anchor_idx = -1
                         max_iou = -1
 
