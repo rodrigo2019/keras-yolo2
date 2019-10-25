@@ -73,8 +73,8 @@ The configuration file is a json file, which looks like this:
 {
     "model" : {
         "backend":              "Full Yolo",    # "Tiny Yolo" or "Full Yolo" or "MobileNet" or "SqueezeNet" or "Inception3"
-        "input_size_w":         448,
-        "input_size_h":         448,
+        "input_size_w":         416,
+        "input_size_h":         416,
         "gray_mode":            false,
         "anchors":              [0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828],
         "max_box_per_image":    10,        
@@ -99,7 +99,9 @@ The configuration file is a json file, which looks like this:
 
         "workers":              3,
         "max_queue_size":       8,
-        "early_stop":           true,
+        "early_stop":           false,
+        "look_ahead":           true,           # Radam + Lookahead
+        "cosine_decay":         true,           # warmup
         "tensorboard_log_dir":  "./logs/example",
 
         "object_scale":         5.0 ,           # determine how much to penalize wrong prediction of confidence of object predictors
@@ -107,11 +109,13 @@ The configuration file is a json file, which looks like this:
         "coord_scale":          1.0,            # determine how much to penalize wrong position and size predictions (x, y, w, h)
         "class_scale":          1.0,            # determine how much to penalize wrong class prediction
 
-        "saved_weights_name":   "raccon.h5",
+        "saved_weights_name":   "full_yolo_voc",
         "debug":                true            # turn on/off the line that prints current confidence, position, size, class losses and recall
     },
 
     "valid": {
+        "iou_threshold" :       0.7,           # parameters used for the map evaluation
+        "score_threshold":      0.5,           # parameters used for the map evaluation
         "valid_csv_file":       "",
         "valid_csv_base_path":  "",
         "valid_image_folder":   "",
@@ -124,7 +128,7 @@ The configuration file is a json file, which looks like this:
         "create_backup":        true,
         "redirect_model":       true,           #if true, will rename tensorboard_log_dir and saved_weights_name to keep in same directory
         "backup_path":          "../backup",
-        "backup_prefix":        "Tiny_yolo_VOC",
+        "backup_prefix":        "full_yolo_VOC",
     }
 }
 
