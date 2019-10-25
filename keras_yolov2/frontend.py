@@ -147,7 +147,6 @@ class YOLO(object):
                                          norm=self._feature_extractor.normalize,
                                          jitter=False)
 
-        # TODO: warmup is not working with new loss function formula
         self._warmup_batches = warmup_epochs * (train_times * len(train_generator) + valid_times * len(valid_generator))
 
         ############################################
