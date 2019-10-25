@@ -147,7 +147,6 @@ class YOLO(object):
                                          norm=self._feature_extractor.normalize,
                                          jitter=False)
 
-        self._warmup_batches = warmup_epochs * (train_times * len(train_generator) + valid_times * len(valid_generator))
 
         ############################################
         # Compile the model
@@ -200,6 +199,7 @@ class YOLO(object):
                                          iou_threshold=iou_threshold,
                                          score_threshold=score_threshold)
 
+        self._warmup_batches = warmup_epochs * (train_times * len(train_generator) + valid_times * len(valid_generator))
         if cosine_decay:
             total_steps = int(nb_epochs * len(train_generator) / batch_size)
             warmup_steps = int(warmup_epochs * len(train_generator) / batch_size)
