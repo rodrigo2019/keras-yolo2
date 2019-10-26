@@ -15,7 +15,7 @@ import os
 
 
 class YOLO(object):
-    def __init__(self, backend, input_size, labels, max_box_per_image, anchors, gray_mode=False):
+    def __init__(self, backend, input_size, labels, anchors, gray_mode=False):
 
         self._input_size = input_size
         self._gray_mode = gray_mode
@@ -23,8 +23,6 @@ class YOLO(object):
         self._nb_class = len(self.labels)
         self._nb_box = len(anchors) // 2
         self._anchors = anchors
-
-        self._max_box_per_image = max_box_per_image
 
         ##########################
         # Make the model
@@ -127,7 +125,6 @@ class YOLO(object):
             'CLASS': len(self.labels),
             'ANCHORS': self._anchors,
             'BATCH_SIZE': self._batch_size,
-            'TRUE_BOX_BUFFER': self._max_box_per_image,
         }
 
         if train_generator_callback is not None:
