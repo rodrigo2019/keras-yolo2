@@ -1,3 +1,5 @@
+import sys
+sys.path.append("..")
 from keras_yolov2.preprocessing import parse_annotation_xml, parse_annotation_csv
 from keras_yolov2.utils import import_feature_extractor
 import numpy as np
@@ -10,7 +12,7 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument(
     '-c',
     '--conf',
-    default='config.json',
+    default='../config.json',
     help='path to configuration file')
 
 argparser.add_argument(
