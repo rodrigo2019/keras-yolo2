@@ -254,3 +254,7 @@ class YOLO(object):
         boxes = decode_netout(netout, self._anchors, self._nb_class, score_threshold, iou_threshold)
 
         return boxes
+
+    @property
+    def model(self):
+        return self._model
