@@ -2,8 +2,7 @@
 
 This repo contains the implementation of YOLOv2 in Keras with Tensorflow backend. It supports training YOLOv2 network with various backends such as MobileNet and InceptionV3.
 ## Todo list:
-- [x] Warmup training
-- [x] Raccoon detection, Self-driving car, and Kangaroo detection
+- [ ] Warmup training
 - [x] SqueezeNet, MobileNet, InceptionV3, and ResNet50 backends
 - [x] Support python 2.7 and 3.6
 - [x] mAP Evaluation
@@ -43,13 +42,11 @@ Dataset => http://cvrr.ucsd.edu/vivachallenge/index.php/hands/hand-detection/
 
 python 2.7 or python 3.x
 
-opencv
-
-tqdm
-
-keras >= 2.0.8
-
-imgaug
+- opencv
+- tqdm
+- keras==2.2.4
+- imgaug
+- tensorflow==1.14.0
 
 ### 1. Data preparation
 Download the Raccoon dataset from from https://github.com/experiencor/raccoon_dataset.
