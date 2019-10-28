@@ -1,9 +1,8 @@
-from preprocessing import parse_annotation_xml, parse_annotation_csv
+from keras_yolov2.preprocessing import parse_annotation_xml, parse_annotation_csv
 from tqdm import tqdm
 import numpy as np
 import json
 import argparse
-import keras
 import os
 import cv2
 
@@ -110,5 +109,5 @@ def _main_(args):
 
 
 if __name__ == "__main__":
-    args = argparser.parse_args()
-    _main_(args)
+    _args = argparser.parse_args()
+    _main_(_args)
