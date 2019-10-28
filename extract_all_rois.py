@@ -107,6 +107,7 @@ def _main_(args):
                     base_name, ext = os.path.splitext(base_name)
                     cv2.imwrite("roi_dataset/{}/{}/{}_{}_{}.jpg".format(folder_name,name,name, base_name, i), roi)
 
+
 if __name__ == "__main__":
     args = argparser.parse_args()
     _main_(args)
