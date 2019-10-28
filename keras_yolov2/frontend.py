@@ -228,9 +228,6 @@ class YOLO(object):
                                   workers=workers,
                                   max_queue_size=max_queue_size)
 
-    def get_inference_model(self):
-        return self._model
-
     def predict(self, image, iou_threshold=0.5, score_threshold=0.5):
 
         if len(image.shape) == 3 and self._gray_mode:

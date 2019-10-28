@@ -47,9 +47,7 @@ def _main_(args):
                 gray_mode=config['model']['gray_mode'])
 
     yolo.load_weights(weights_path)
-
-    inference_model = yolo.get_inference_model()
-    inference_model.save("{}_inference.h5".format(os.path.splitext(weights_path)[0]))
+    yolo.model.save("{}_inference.h5".format(os.path.splitext(weights_path)[0]))
 
 
 if __name__ == '__main__':
