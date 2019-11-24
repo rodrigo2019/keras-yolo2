@@ -3,9 +3,9 @@ import os
 import xml.etree.ElementTree as et
 
 import cv2
-import imgaug as ia
 import numpy as np
 from imgaug import augmenters as iaa
+from imgaug.augmentables import BoundingBox, BoundingBoxesOnImage
 from keras.utils import Sequence
 from tqdm import tqdm
 
@@ -156,10 +156,10 @@ class BatchGenerator(Sequence):
                 iaa.Flipud(0.2),  # vertically flip 20% of all images
                 # sometimes(iaa.Crop(percent=(0, 0.1))), # crop images by 0-10% of their height/width
                 sometimes(iaa.Affine(
-                    scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},  # scale images to 80-120% of their size, per axis
-                    translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},  # translate by -20 to +20 percent
-                    rotate=(-20, 20),  # rotate by -45 to +45 degrees
-                    shear=(-5, 5),  # shear by -16 to +16 degrees
+                    # scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},  # scale images to 80-120% of their size, per axis
+                    # translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},  # translate by -20 to +20 percent
+                    # rotate=(-20, 20),  # rotate by -45 to +45 degrees
+                    # shear=(-5, 5),  # shear by -16 to +16 degrees
                     # order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
                     # cval=(0, 255), # if mode is constant, use a cval between 0 and 255
                     # mode=ia.ALL # use any of scikit-image's warping modes (see 2nd image from the top for examples)
@@ -356,35 +356,23 @@ class BatchGenerator(Sequence):
         all_objs = copy.deepcopy(train_instance['object'])
 
         if jitter:
-            keypoints = []
+            bbs = []
             for obj in all_objs:
                 xmin = obj['xmin']
                 ymin = obj['ymin']
                 xmax = obj['xmax']
                 ymax = obj['ymax']
-                keypoints.append(ia.Keypoint(x=xmin, y=ymin))
-                keypoints.append(ia.Keypoint(x=xmax, y=ymin))
-                keypoints.append(ia.Keypoint(x=xmax, y=ymax))
-                keypoints.append(ia.Keypoint(x=xmin, y=ymax))
-            keypoints_on_image = ia.KeypointsOnImage(keypoints, shape=image.shape)
-            seq_det = self._aug_pipe.to_deterministic()
-            image = seq_det.augment_image(image)
+                bbs.append(BoundingBox(x1=xmin, x2=xmax, y1=ymin, y2=ymax))
+            bbs = BoundingBoxesOnImage(bbs, shape=image.shape)
+            image, bbs = self._aug_pipe(image=image, bounding_boxes=bbs)
+            bbs = bbs.remove_out_of_image().clip_out_of_image()
+
             if len(all_objs) != 0:
-                keypoints_aug = seq_det.augment_keypoints([keypoints_on_image])
-                coords = keypoints_aug[0].get_coords_array()
-                for i in range(0, len(coords), 4):
-                    xa = coords[i, 0]
-                    ya = coords[i, 1]
-                    xb = coords[i + 1, 0]
-                    yb = coords[i + 1, 1]
-                    xc = coords[i + 2, 0]
-                    yc = coords[i + 2, 1]
-                    xd = coords[i + 3, 0]
-                    yd = coords[i + 3, 1]
-                    all_objs[i // 4]['xmin'] = max(min(xa, xb, xc, xd), 0)
-                    all_objs[i // 4]['xmax'] = min(max(xa, xb, xc, xd), image.shape[1] - 1)
-                    all_objs[i // 4]['ymin'] = max(min(ya, yb, yc, yd), 0)
-                    all_objs[i // 4]['ymax'] = min(max(ya, yb, yc, yd), image.shape[0] - 1)
+                for i in range(len(bbs.bounding_boxes)):
+                    all_objs[i]['xmin'] = bbs.bounding_boxes[i].x1
+                    all_objs[i]['xmax'] = bbs.bounding_boxes[i].x2
+                    all_objs[i]['ymin'] = bbs.bounding_boxes[i].y1
+                    all_objs[i]['ymax'] = bbs.bounding_boxes[i].y2
 
                     # resize the image to standard size
         image = cv2.resize(image, (self._config['IMAGE_W'], self._config['IMAGE_H']))
