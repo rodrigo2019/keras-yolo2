@@ -1,5 +1,6 @@
 from .utils import BoundBox, bbox_iou
 from imgaug import augmenters as iaa
+from imgaug.augmentables import BoundingBox, BoundingBoxesOnImage
 from keras.utils import Sequence
 from tqdm import tqdm
 import xml.etree.ElementTree as et
@@ -149,8 +150,8 @@ class BatchGenerator(Sequence):
         self._aug_pipe = iaa.Sequential(
             [
                 # apply the following augmenters to most images
-                # iaa.Fliplr(0.5), # horizontally flip 50% of all images
-                # iaa.Flipud(0.2), # vertically flip 20% of all images
+                iaa.Fliplr(0.5), # horizontally flip 50% of all images
+                iaa.Flipud(0.2), # vertically flip 20% of all images
                 # sometimes(iaa.Crop(percent=(0, 0.1))), # crop images by 0-10% of their height/width
                 sometimes(iaa.Affine(
                     # scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # scale images to 80-120% of their size, per axis
@@ -327,24 +328,23 @@ class BatchGenerator(Sequence):
         all_objs = copy.deepcopy(train_instance['object'])
 
         if jitter:
-            # scale the image
-            scale = np.random.uniform() / 10. + 1.
-            image = cv2.resize(image, (0, 0), fx=scale, fy=scale)
+            bbs = []
+            for obj in all_objs:
+                xmin = obj['xmin']
+                ymin = obj['ymin']
+                xmax = obj['xmax']
+                ymax = obj['ymax']
+                bbs.append(BoundingBox(x1=xmin, x2=xmax, y1=ymin, y2=ymax))
+            bbs = BoundingBoxesOnImage(bbs, shape=image.shape)
+            image, bbs = self._aug_pipe(image=image, bounding_boxes=bbs)
+            bbs = bbs.remove_out_of_image().clip_out_of_image()
 
-            # translate the image
-            max_offx = (scale-1.) * w
-            max_offy = (scale-1.) * h
-            offx = int(np.random.uniform() * max_offx)
-            offy = int(np.random.uniform() * max_offy)
-            
-            image = image[offy: (offy + h), offx: (offx + w)]
-
-            # flip the image
-            flip = np.random.binomial(1, .5)
-            if flip > 0.5:
-                image = cv2.flip(image, 1)
-                
-            image = self._aug_pipe.augment_image(image)
+            if len(all_objs) != 0:
+                for i in range(len(bbs.bounding_boxes)):
+                    all_objs[i]['xmin'] = bbs.bounding_boxes[i].x1
+                    all_objs[i]['xmax'] = bbs.bounding_boxes[i].x2
+                    all_objs[i]['ymin'] = bbs.bounding_boxes[i].y1
+                    all_objs[i]['ymax'] = bbs.bounding_boxes[i].y2
             
         # resize the image to standard size
         image = cv2.resize(image, (self._config['IMAGE_W'], self._config['IMAGE_H']))
@@ -355,20 +355,10 @@ class BatchGenerator(Sequence):
         # fix object's position and size
         for obj in all_objs:
             for attr in ['xmin', 'xmax']:
-                if jitter:
-                    obj[attr] = int(obj[attr] * scale - offx)
-                    
                 obj[attr] = int(obj[attr] * float(self._config['IMAGE_W']) / w)
                 obj[attr] = max(min(obj[attr], self._config['IMAGE_W']), 0)
-                
+
             for attr in ['ymin', 'ymax']:
-                if jitter: obj[attr] = int(obj[attr] * scale - offy)
-                    
                 obj[attr] = int(obj[attr] * float(self._config['IMAGE_H']) / h)
                 obj[attr] = max(min(obj[attr], self._config['IMAGE_H']), 0)
-
-            if jitter and flip > 0.5:
-                xmin = obj['xmin']
-                obj['xmin'] = self._config['IMAGE_W'] - obj['xmax']
-                obj['xmax'] = self._config['IMAGE_W'] - xmin
         return image, all_objs
