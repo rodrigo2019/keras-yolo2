@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from imgaug import augmenters as iaa
 from imgaug.augmentables import BoundingBox, BoundingBoxesOnImage
-from keras.utils import Sequence
+from tensorflow.python.keras.utils import Sequence
 from tqdm import tqdm
 
 from .utils import BoundBox, bbox_iou

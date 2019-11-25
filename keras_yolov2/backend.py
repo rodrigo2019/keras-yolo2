@@ -1,12 +1,12 @@
-from keras.models import Model
+from tensorflow.python.keras.models import Model
 import tensorflow as tf
-from keras.layers import Reshape, Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Flatten, Dense, Lambda
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.merge import concatenate
-from keras.applications.mobilenet import MobileNet
-from keras.applications import InceptionV3
-from keras.applications.vgg16 import VGG16
-from keras.applications.resnet50 import ResNet50
+from tensorflow.python.keras.layers import Reshape, Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Flatten, Dense, Lambda
+from tensorflow.python.keras.layers.advanced_activations import LeakyReLU
+from tensorflow.python.keras.layers.merge import concatenate
+from tensorflow.python.keras.applications.mobilenet import MobileNet
+from tensorflow.python.keras.applications import InceptionV3
+from tensorflow.python.keras.applications.vgg16 import VGG16
+from tensorflow.python.keras.applications.resnet50 import ResNet50
 
 base_path = './backend_weights/'  # FIXME :: use environment variables
 

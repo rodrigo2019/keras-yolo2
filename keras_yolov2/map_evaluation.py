@@ -1,7 +1,7 @@
 from .utils import compute_overlap, compute_ap
 import tensorflow as tf
 import numpy as np
-import keras
+import tensorflow.keras as keras
 
 
 class MapEvaluation(keras.callbacks.Callback):

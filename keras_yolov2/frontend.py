@@ -2,10 +2,10 @@ from .yolo_loss import YoloLoss
 from .map_evaluation import MapEvaluation
 from .utils import decode_netout, import_feature_extractor, import_dynamically
 from .preprocessing import BatchGenerator
-from keras.models import Model
-from keras.layers import Reshape, Conv2D, Input
-from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from tensorflow.python.keras.models import Model
+from tensorflow.python.keras.layers import Reshape, Conv2D, Input
+from tensorflow.python.keras.optimizers import Adam
+from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 import numpy as np
 import sys
 import cv2
