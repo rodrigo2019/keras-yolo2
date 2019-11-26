@@ -193,7 +193,7 @@ class YOLO(object):
 
         if not isinstance(custom_callback, list):
             custom_callback = [custom_callback]
-        callbacks = [ckp_best_loss, ckp_saver, tensorboard_cb] + custom_callback
+        callbacks = [ckp_best_loss, ckp_saver, tensorboard_cb, map_evaluator_cb] + custom_callback
         if early_stop:
             callbacks.append(early_stop_cb)
 

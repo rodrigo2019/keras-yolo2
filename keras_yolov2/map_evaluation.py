@@ -76,12 +76,12 @@ class MapEvaluation(keras.callbacks.Callback):
 
         # gather all detections and annotations
         all_detections = [[None for _ in range(self._generator.num_classes())]
-                          for _ in range(self._generator.size())]
+                          for _ in range(len(self._generator))]
         all_annotations = [[None for _ in range(self._generator.num_classes())]
-                           for _ in range(self._generator.size())]
+                           for _ in range(len(self._generator))]
 
-        for i in range(self._generator.size()):
-            raw_image = self._generator.load_image(i)
+        for i in range(len(self._generator)):
+            raw_image, annotations = next(self._generator.load_data())
             raw_height, raw_width, _ = raw_image.shape
 
             # make the boxes and the labels
@@ -107,8 +107,6 @@ class MapEvaluation(keras.callbacks.Callback):
             for label in range(self._generator.num_classes()):
                 all_detections[i][label] = pred_boxes[pred_labels == label, :]
 
-            annotations = self._generator.load_annotation(i)
-
             # copy ground truth to all_annotations
             for label in range(self._generator.num_classes()):
                 all_annotations[i][label] = annotations[annotations[:, 4] == label, :4].copy()
@@ -122,7 +120,7 @@ class MapEvaluation(keras.callbacks.Callback):
             scores = np.zeros((0,))
             num_annotations = 0.0
 
-            for i in range(self._generator.size()):
+            for i in range(len(self._generator)):
                 detections = all_detections[i][label]
                 annotations = all_annotations[i][label]
                 num_annotations += annotations.shape[0]
