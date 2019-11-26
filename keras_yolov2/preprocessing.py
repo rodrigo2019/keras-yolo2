@@ -1,12 +1,11 @@
-import copy
 import os
 import xml.etree.ElementTree as et
 
 import cv2
 import numpy as np
+import tensorflow as tf
 from imgaug import augmenters as iaa
 from imgaug.augmentables import BoundingBox, BoundingBoxesOnImage
-from tensorflow.python.keras.utils import Sequence
 from tqdm import tqdm
 
 from .utils import BoundBox, bbox_iou
@@ -128,7 +127,7 @@ def parse_annotation_csv(csv_file, labels=[], base_path=""):
     return all_imgs, seen_labels
 
 
-class BatchGenerator(Sequence):
+class BatchGenerator:
     def __init__(self, images, config, shuffle=True, jitter=True, norm=None, callback=None):
 
         self._images = images
@@ -177,7 +176,7 @@ class BatchGenerator(Sequence):
                                    # blur image using local medians (kernel sizes between 2 and 7)
                                ]),
                                iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),  # sharpen images
-                               iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)), # emboss images
+                               iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),  # emboss images
                                # search either for all edges or for directed edges
                                # sometimes(iaa.OneOf([
                                #    iaa.EdgeDetect(alpha=(0, 0.7)),
@@ -189,7 +188,7 @@ class BatchGenerator(Sequence):
                                    iaa.Dropout((0.01, 0.1), per_channel=0.5),  # randomly remove up to 10% of the pixels
                                    # iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
                                ]),
-                               iaa.Invert(0.05, per_channel=True), # invert color channels
+                               iaa.Invert(0.05, per_channel=True),  # invert color channels
                                iaa.Add((-10, 10), per_channel=0.5),  # change brightness of images
                                iaa.Multiply((0.5, 1.5), per_channel=0.5),  # change brightness of images
                                iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
@@ -203,169 +202,143 @@ class BatchGenerator(Sequence):
         if shuffle:
             np.random.shuffle(self._images)
 
+        self._dataset = tf.data.Dataset.from_generator(self.load_data, (tf.uint8, tf.int32))
+
+        wrapper = lambda image, label: tf.py_func(func=self.preprocessing, inp=(image, label), Tout=(tf.float32,
+                                                                                                     tf.float32))
+        self._dataset = self._dataset.map(wrapper, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+        yolo_input_shape = [self._config["IMAGE_H"], self._config["IMAGE_W"], self._config["IMAGE_C"]]
+        yolo_output_shape = [self._config["GRID_H"], self._config["GRID_W"], self._config["BOX"],
+                             4 + 1 + len(self._config['LABELS'])]
+        self._dataset = self._dataset.padded_batch(self._config["BATCH_SIZE"],
+                                                   padded_shapes=(yolo_input_shape, yolo_output_shape))
+        self._dataset = self._dataset.repeat(-1)
+
     def __len__(self):
-        return int(np.ceil(float(len(self._images)) / self._config['BATCH_SIZE']))
+        return len(self._images)
 
     def num_classes(self):
         return len(self._config['LABELS'])
 
-    def size(self):
-        return len(self._images)
+    def preprocessing(self, image, annots):
 
-    def load_annotation(self, i):
-        annots = []
+        yolo_grid_output = np.zeros((self._config['GRID_H'], self._config['GRID_W'], self._config['BOX'],
+                                     4 + 1 + len(self._config['LABELS'])), dtype=np.float32)
+        image, annots = self.aug_image(image, annots, jitter=self._jitter)
 
-        for obj in self._images[i]['object']:
-            annot = [obj['xmin'], obj['ymin'], obj['xmax'], obj['ymax'], self._config['LABELS'].index(obj['name'])]
-            annots += [annot]
+        for annot in annots:
+            xmin, ymin, xmax, ymax, obj_indx = annot
+            if xmax > xmin and ymax > ymin and obj_indx < len(self._config['LABELS']):
+                center_x = .5 * (xmin + xmax)
+                center_x = center_x / (float(self._config['IMAGE_W']) / self._config['GRID_W'])
+                center_y = .5 * (ymin + ymax)
+                center_y = center_y / (float(self._config['IMAGE_H']) / self._config['GRID_H'])
 
-        if len(annots) == 0:
-            annots = [[]]
+                grid_x = int(np.floor(center_x))
+                grid_y = int(np.floor(center_y))
 
-        return np.array(annots)
+                if grid_x < self._config['GRID_W'] and grid_y < self._config['GRID_H']:
+                    center_w = (xmax - xmin) / (
+                            float(self._config['IMAGE_W']) / self._config['GRID_W'])
+                    center_h = (ymax - ymin) / (
+                            float(self._config['IMAGE_H']) / self._config['GRID_H'])
 
-    def load_image(self, i):
+                    box = [center_x, center_y, center_w, center_h]
+
+                    # find the anchor that best predicts this box
+                    best_anchor = -1
+                    max_iou = -1
+
+                    shifted_box = BoundBox(0, 0, center_w, center_h)
+
+                    for i in range(len(self._anchors)):
+                        anchor = self._anchors[i]
+                        iou = bbox_iou(shifted_box, anchor)
+
+                        if max_iou < iou:
+                            best_anchor = i
+                            max_iou = iou
+
+                    # assign ground truth x, y, w, h, confidence and class probs to y_batch
+                    yolo_grid_output[grid_y, grid_x, best_anchor, 0:4] = box
+                    yolo_grid_output[grid_y, grid_x, best_anchor, 4] = 1.
+                    yolo_grid_output[grid_y, grid_x, best_anchor, 5 + obj_indx] = 1
+        # assign input image to x_batch
+        if self._norm is not None:
+            image = self._norm(image)
+
+        return np.float32(image), yolo_grid_output
+
+    def load_data(self):
+        while True:
+            self.on_epoch_end()
+            for train_instance in self._images:
+                annots = []
+                for obj in train_instance['object']:
+                    annot = [obj['xmin'], obj['ymin'], obj['xmax'], obj['ymax'], self._config['LABELS'].index(obj['name'])]
+                    annots += [annot]
+
+                if len(annots) == 0:
+                    annots = [[]]
+
+                yield self.load_image(train_instance["filename"]), np.array(annots, dtype=np.int32)
+
+    def load_image(self, fname):
         if self._config['IMAGE_C'] == 1:
-            image = cv2.imread(self._images[i]['filename'], cv2.IMREAD_GRAYSCALE)
-            image = image[..., np.newaxis]
+            image = cv2.imread(fname, cv2.IMREAD_GRAYSCALE)
+            # image = image[..., np.newaxis]
         elif self._config['IMAGE_C'] == 3:
-            image = cv2.imread(self._images[i]['filename'])
+            image = cv2.imread(fname)
         else:
             raise ValueError("Invalid number of image channels.")
         return image
-
-    def __getitem__(self, idx):
-        l_bound = idx * self._config['BATCH_SIZE']
-        r_bound = (idx + 1) * self._config['BATCH_SIZE']
-
-        if r_bound > len(self._images):
-            r_bound = len(self._images)
-            l_bound = r_bound - self._config['BATCH_SIZE']
-
-        instance_count = 0
-        if self._config['IMAGE_C'] == 3:
-            x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'], 3))  # input images
-        else:
-            x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'], 1))
-
-        y_batch = np.zeros((r_bound - l_bound, self._config['GRID_H'], self._config['GRID_W'], self._config['BOX'],
-                            4 + 1 + len(self._config['LABELS'])))  # desired network output
-
-        for train_instance in self._images[l_bound:r_bound]:
-            # augment input image and fix object's position and size
-            img, all_objs = self.aug_image(train_instance, jitter=self._jitter)
-
-            for obj in all_objs:
-                if obj['xmax'] > obj['xmin'] and obj['ymax'] > obj['ymin'] and obj['name'] in self._config['LABELS']:
-                    center_x = .5 * (obj['xmin'] + obj['xmax'])
-                    center_x = center_x / (float(self._config['IMAGE_W']) / self._config['GRID_W'])
-                    center_y = .5 * (obj['ymin'] + obj['ymax'])
-                    center_y = center_y / (float(self._config['IMAGE_H']) / self._config['GRID_H'])
-
-                    grid_x = int(np.floor(center_x))
-                    grid_y = int(np.floor(center_y))
-
-                    if grid_x < self._config['GRID_W'] and grid_y < self._config['GRID_H']:
-                        obj_indx = self._config['LABELS'].index(obj['name'])
-
-                        center_w = (obj['xmax'] - obj['xmin']) / (
-                                    float(self._config['IMAGE_W']) / self._config['GRID_W'])
-                        center_h = (obj['ymax'] - obj['ymin']) / (
-                                    float(self._config['IMAGE_H']) / self._config['GRID_H'])
-
-                        box = [center_x, center_y, center_w, center_h]
-
-                        # find the anchor that best predicts this box
-                        best_anchor = -1
-                        max_iou = -1
-
-                        shifted_box = BoundBox(0, 0, center_w, center_h)
-
-                        for i in range(len(self._anchors)):
-                            anchor = self._anchors[i]
-                            iou = bbox_iou(shifted_box, anchor)
-
-                            if max_iou < iou:
-                                best_anchor = i
-                                max_iou = iou
-
-                        # assign ground truth x, y, w, h, confidence and class probs to y_batch
-                        y_batch[instance_count, grid_y, grid_x, best_anchor, 0:4] = box
-                        y_batch[instance_count, grid_y, grid_x, best_anchor, 4] = 1.
-                        y_batch[instance_count, grid_y, grid_x, best_anchor, 5 + obj_indx] = 1
-
-            # assign input image to x_batch
-            if self._norm is not None:
-                x_batch[instance_count] = self._norm(img)
-            else:
-                # plot image and bounding boxes for sanity check
-                for obj in all_objs:
-                    if obj['xmax'] > obj['xmin'] and obj['ymax'] > obj['ymin']:
-                        cv2.rectangle(img[..., ::-1], (obj['xmin'], obj['ymin']), (obj['xmax'], obj['ymax']),
-                                      (255, 0, 0), 3)
-                        cv2.putText(img[..., ::-1], obj['name'], (obj['xmin'] + 2, obj['ymin'] + 12), 0,
-                                    1.2e-3 * img.shape[0], (0, 255, 0), 2)
-
-                x_batch[instance_count] = img
-            # increase instance counter in current batch
-            instance_count += 1
-
-        return x_batch, y_batch
 
     def on_epoch_end(self):
         if self._shuffle:
             np.random.shuffle(self._images)
 
-    def aug_image(self, train_instance, jitter):
-        image_name = train_instance['filename']
-        if self._config['IMAGE_C'] == 1:
-            image = cv2.imread(image_name, cv2.IMREAD_GRAYSCALE)
-        elif self._config['IMAGE_C'] == 3:
-            image = cv2.imread(image_name)
-        else:
-            raise ValueError("Invalid number of image channels.")
+    def aug_image(self, image, annots, jitter):
 
-        if image is None:
-            print('Cannot find ', image_name)
         if self._callback is not None:
-            image, train_instance = self._callback(image, train_instance)
+            pass  # TODO: callback must be reimplemented
 
         h = image.shape[0]
         w = image.shape[1]
-        all_objs = copy.deepcopy(train_instance['object'])
 
         if jitter:
             bbs = []
-            for obj in all_objs:
-                xmin = obj['xmin']
-                ymin = obj['ymin']
-                xmax = obj['xmax']
-                ymax = obj['ymax']
+
+            for annot in annots:
+                xmin, ymin, xmax, ymax, cls = annot
                 bbs.append(BoundingBox(x1=xmin, x2=xmax, y1=ymin, y2=ymax))
             bbs = BoundingBoxesOnImage(bbs, shape=image.shape)
             image, bbs = self._aug_pipe(image=image, bounding_boxes=bbs)
             bbs = bbs.remove_out_of_image().clip_out_of_image()
 
-            if len(all_objs) != 0:
+            if len(annots) > 0:
                 for i in range(len(bbs.bounding_boxes)):
-                    all_objs[i]['xmin'] = bbs.bounding_boxes[i].x1
-                    all_objs[i]['xmax'] = bbs.bounding_boxes[i].x2
-                    all_objs[i]['ymin'] = bbs.bounding_boxes[i].y1
-                    all_objs[i]['ymax'] = bbs.bounding_boxes[i].y2
+                    annots[i, 0] = bbs.bounding_boxes[i].x1
+                    annots[i, 1] = bbs.bounding_boxes[i].x2
+                    annots[i, 2] = bbs.bounding_boxes[i].y1
+                    annots[i, 3] = bbs.bounding_boxes[i].y2
 
         # resize the image to standard size
         image = cv2.resize(image, (self._config['IMAGE_W'], self._config['IMAGE_H']))
         if self._config['IMAGE_C'] == 1:
             image = image[..., np.newaxis]
-        image = image[..., ::-1]
 
         # fix object's position and size
-        for obj in all_objs:
-            for attr in ['xmin', 'xmax']:
-                obj[attr] = int(obj[attr] * float(self._config['IMAGE_W']) / w)
-                obj[attr] = max(min(obj[attr], self._config['IMAGE_W']), 0)
+        for annot in annots:
+            for attr in [0, 2]:
+                annot[attr] = int(annot[attr] * float(self._config['IMAGE_W']) / w)
+                annot[attr] = max(min(annot[attr], self._config['IMAGE_W']), 0)
 
-            for attr in ['ymin', 'ymax']:
-                obj[attr] = int(obj[attr] * float(self._config['IMAGE_H']) / h)
-                obj[attr] = max(min(obj[attr], self._config['IMAGE_H']), 0)
-        return image, all_objs
+            for attr in [1, 3]:
+                annot[attr] = int(annot[attr] * float(self._config['IMAGE_H']) / h)
+                annot[attr] = max(min(annot[attr], self._config['IMAGE_H']), 0)
+        return image, annots
+
+    @property
+    def dataset(self):
+        return self._dataset

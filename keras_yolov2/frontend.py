@@ -1,15 +1,17 @@
-from .yolo_loss import YoloLoss
-from .map_evaluation import MapEvaluation
-from .utils import decode_netout, import_feature_extractor, import_dynamically
-from .preprocessing import BatchGenerator
-from tensorflow.python.keras.models import Model
-from tensorflow.python.keras.layers import Reshape, Conv2D, Input
-from tensorflow.python.keras.optimizers import Adam
-from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-import numpy as np
-import sys
-import cv2
 import os
+import sys
+
+import cv2
+import numpy as np
+from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from tensorflow.python.keras.layers import Reshape, Conv2D, Input
+from tensorflow.python.keras.models import Model
+from tensorflow.python.keras.optimizers import Adam
+
+from .map_evaluation import MapEvaluation
+from .preprocessing import BatchGenerator
+from .utils import decode_netout, import_feature_extractor, import_dynamically
+from .yolo_loss import YoloLoss
 
 
 class YOLO(object):
@@ -191,23 +193,26 @@ class YOLO(object):
 
         if not isinstance(custom_callback, list):
             custom_callback = [custom_callback]
-        callbacks = [ckp_best_loss, ckp_saver, tensorboard_cb, map_evaluator_cb] + custom_callback
+        callbacks = [ckp_best_loss, ckp_saver, tensorboard_cb] + custom_callback
         if early_stop:
             callbacks.append(early_stop_cb)
 
         #############################
         # Start the training process
         #############################
-
-        self._model.fit_generator(generator=train_generator,
-                                  steps_per_epoch=len(train_generator) * train_times,
-                                  epochs=warmup_epochs + nb_epochs,
-                                  verbose=2 if debug else 1,
-                                  validation_data=valid_generator,
-                                  validation_steps=len(valid_generator) * valid_times,
-                                  callbacks=callbacks,
-                                  workers=workers,
-                                  max_queue_size=max_queue_size)
+        # iter = train_generator.dataset.make_one_shot_iterator()
+        # import tensorflow as tf
+        # with tf.keras.backend.get_session().as_default():
+        #     for i in range(10000):
+        #         x,y =iter.get_next()
+        #         print(y.eval().shape, i)
+        self._model.fit(train_generator.dataset,
+                        steps_per_epoch=len(train_generator) // self._batch_size * train_times,
+                        epochs=warmup_epochs + nb_epochs,
+                        verbose=2 if debug else 1,
+                        validation_data=valid_generator.dataset,
+                        validation_steps=len(valid_generator) // self._batch_size,
+                        callbacks=callbacks)
 
     def get_inference_model(self):
         return self._model
