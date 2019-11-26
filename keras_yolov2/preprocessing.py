@@ -213,7 +213,7 @@ class BatchGenerator:
                              4 + 1 + len(self._config['LABELS'])]
         self._dataset = self._dataset.padded_batch(self._config["BATCH_SIZE"],
                                                    padded_shapes=(yolo_input_shape, yolo_output_shape))
-        self._dataset = self._dataset.repeat(-1)
+        self._dataset = self._dataset.shuffle(len(self._images))
 
     def __len__(self):
         return len(self._images)
