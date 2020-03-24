@@ -222,6 +222,8 @@ class YOLO(object):
             image = image[..., np.newaxis]
 
         image = cv2.resize(image, (self._input_size[1], self._input_size[0]))
+        image = image[..., ::-1]  # make it RGB (it is important for normalization of some backends)
+
         image = self._feature_extractor.normalize(image)
         if len(image.shape) == 3:
             input_image = image[np.newaxis, :]
