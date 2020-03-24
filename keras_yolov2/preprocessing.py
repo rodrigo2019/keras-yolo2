@@ -385,7 +385,7 @@ class BatchGenerator(Sequence):
         image = cv2.resize(image, (self._config['IMAGE_W'], self._config['IMAGE_H']))
         if self._config['IMAGE_C'] == 1:
             image = image[..., np.newaxis]
-        image = image[..., ::-1]
+        image = image[..., ::-1]  # make it RGB (it is important for normalization of some backends)
 
         # fix object's position and size
         for obj in all_objs:
