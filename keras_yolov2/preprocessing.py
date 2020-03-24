@@ -357,22 +357,29 @@ class BatchGenerator(Sequence):
 
         if jitter:
             bbs = []
-            for obj in all_objs:
+            for i, obj in enumerate(all_objs):
                 xmin = obj['xmin']
                 ymin = obj['ymin']
                 xmax = obj['xmax']
                 ymax = obj['ymax']
-                bbs.append(BoundingBox(x1=xmin, x2=xmax, y1=ymin, y2=ymax))
+                # use label field to later match it with final boxes
+                bbs.append(BoundingBox(x1=xmin, x2=xmax, y1=ymin, y2=ymax, label=i))
             bbs = BoundingBoxesOnImage(bbs, shape=image.shape)
             image, bbs = self._aug_pipe(image=image, bounding_boxes=bbs)
             bbs = bbs.remove_out_of_image().clip_out_of_image()
 
-            if len(all_objs) != 0:
-                for i in range(len(bbs.bounding_boxes)):
-                    all_objs[i]['xmin'] = bbs.bounding_boxes[i].x1
-                    all_objs[i]['xmax'] = bbs.bounding_boxes[i].x2
-                    all_objs[i]['ymin'] = bbs.bounding_boxes[i].y1
-                    all_objs[i]['ymax'] = bbs.bounding_boxes[i].y2
+            if len(bbs) < len(all_objs):
+                print("Some boxes were removed during augmentations.")
+
+            filtered_objs = []
+            for bb in bbs.bounding_boxes:
+                obj = all_objs[bb.label]
+                obj['xmin'] = bb.x1
+                obj['xmax'] = bb.x2
+                obj['ymin'] = bb.y1
+                obj['ymax'] = bb.y2
+                filtered_objs.append(obj)
+            all_objs = filtered_objs
 
                     # resize the image to standard size
         image = cv2.resize(image, (self._config['IMAGE_W'], self._config['IMAGE_H']))
