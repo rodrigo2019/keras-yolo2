@@ -26,7 +26,8 @@
 
         "workers":              12,
         "max_queue_size":       40,
-        "early_stop":           true,
+        "early_stop":           false,
+        "cosine_decay":         true,
         "tensorboard_log_dir":  "./logs/1",
 
         "object_scale":         5.0 ,

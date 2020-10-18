@@ -1,7 +1,8 @@
-from .utils import compute_overlap, compute_ap
-import tensorflow as tf
 import numpy as np
-import keras
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.python.ops import summary_ops_v2
+from .utils import compute_overlap, compute_ap
 
 
 class MapEvaluation(keras.callbacks.Callback):
@@ -59,12 +60,11 @@ class MapEvaluation(keras.callbacks.Callback):
             else:
                 print("mAP did not improve from {}.".format(self.bestMap))
 
-            if self._tensorboard is not None and self._tensorboard.writer is not None:
-                summary = tf.Summary()
-                summary_value = summary.value.add()
-                summary_value.simple_value = _map
-                summary_value.tag = "val_mAP"
-                self._tensorboard.writer.add_summary(summary, epoch)
+            if self._tensorboard is not None:
+                with summary_ops_v2.always_record_summaries():
+                    with self._tensorboard._val_writer.as_default():
+                        name = "mAP"  # Remove 'val_' prefix.
+                        summary_ops_v2.scalar('epoch_' + name, _map, step=epoch)
 
     def evaluate_map(self):
         average_precisions = self._calc_avg_precisions()

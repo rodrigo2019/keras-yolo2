@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from imgaug import augmenters as iaa
 from imgaug.augmentables import BoundingBox, BoundingBoxesOnImage
-from keras.utils import Sequence
+from tensorflow.keras.utils import Sequence
 from tqdm import tqdm
 
 from .utils import BoundBox, bbox_iou
@@ -156,10 +156,10 @@ class BatchGenerator(Sequence):
                 iaa.Flipud(0.2),  # vertically flip 20% of all images
                 # sometimes(iaa.Crop(percent=(0, 0.1))), # crop images by 0-10% of their height/width
                 sometimes(iaa.Affine(
-                    scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},  # scale images to 80-120% of their size, per axis
-                    translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},  # translate by -20 to +20 percent
-                    rotate=(-5, 5),  # rotate by -45 to +45 degrees
-                    shear=(-5, 5),  # shear by -16 to +16 degrees
+                    # scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},  # scale images to 80-120% of their size, per axis
+                    # translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},  # translate by -20 to +20 percent
+                    # rotate=(-20, 20),  # rotate by -45 to +45 degrees
+                    # shear=(-5, 5),  # shear by -16 to +16 degrees
                     # order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
                     # cval=(0, 255), # if mode is constant, use a cval between 0 and 255
                     # mode=ia.ALL # use any of scikit-image's warping modes (see 2nd image from the top for examples)
@@ -177,7 +177,7 @@ class BatchGenerator(Sequence):
                                    # blur image using local medians (kernel sizes between 2 and 7)
                                ]),
                                iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),  # sharpen images
-                               iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)), # emboss images
+                               iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),  # emboss images
                                # search either for all edges or for directed edges
                                # sometimes(iaa.OneOf([
                                #    iaa.EdgeDetect(alpha=(0, 0.7)),
@@ -189,7 +189,7 @@ class BatchGenerator(Sequence):
                                    iaa.Dropout((0.01, 0.1), per_channel=0.5),  # randomly remove up to 10% of the pixels
                                    # iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
                                ]),
-                               iaa.Invert(0.05, per_channel=True), # invert color channels
+                               iaa.Invert(0.05, per_channel=True),  # invert color channels
                                iaa.Add((-10, 10), per_channel=0.5),  # change brightness of images
                                iaa.Multiply((0.5, 1.5), per_channel=0.5),  # change brightness of images
                                iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
@@ -243,56 +243,59 @@ class BatchGenerator(Sequence):
             l_bound = r_bound - self._config['BATCH_SIZE']
 
         instance_count = 0
-        if self._config['IMAGE_C'] == 3:
-            x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'], 3))  # input images
-        else:
-            x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'], 1))
+        x_batch = np.zeros((r_bound - l_bound, self._config['IMAGE_H'], self._config['IMAGE_W'],
+                            self._config['IMAGE_C']))  # input images
 
         y_batch = np.zeros((r_bound - l_bound, self._config['GRID_H'], self._config['GRID_W'], self._config['BOX'],
                             4 + 1 + len(self._config['LABELS'])))  # desired network output
 
+        anchors_populated_map = np.zeros((r_bound - l_bound, self._config['GRID_H'], self._config['GRID_W'],
+                                          self._config['BOX']))
         for train_instance in self._images[l_bound:r_bound]:
             # augment input image and fix object's position and size
             img, all_objs = self.aug_image(train_instance, jitter=self._jitter)
 
             for obj in all_objs:
+                # check if it is a valid annotion
                 if obj['xmax'] > obj['xmin'] and obj['ymax'] > obj['ymin'] and obj['name'] in self._config['LABELS']:
-                    center_x = .5 * (obj['xmin'] + obj['xmax'])
-                    center_x = center_x / (float(self._config['IMAGE_W']) / self._config['GRID_W'])
-                    center_y = .5 * (obj['ymin'] + obj['ymax'])
-                    center_y = center_y / (float(self._config['IMAGE_H']) / self._config['GRID_H'])
+                    scale_w = float(self._config['IMAGE_W']) / self._config['GRID_W']
+                    scale_h = float(self._config['IMAGE_H']) / self._config['GRID_H']
+                    # get which grid cell it is from
+                    obj_center_x = (obj['xmin'] + obj['xmax']) / 2
+                    obj_center_x = obj_center_x / scale_w
+                    obj_center_y = (obj['ymin'] + obj['ymax']) / 2
+                    obj_center_y = obj_center_y / scale_h
 
-                    grid_x = int(np.floor(center_x))
-                    grid_y = int(np.floor(center_y))
+                    obj_grid_x = int(np.floor(obj_center_x))
+                    obj_grid_y = int(np.floor(obj_center_y))
 
-                    if grid_x < self._config['GRID_W'] and grid_y < self._config['GRID_H']:
+                    if obj_grid_x < self._config['GRID_W'] and obj_grid_y < self._config['GRID_H']:
                         obj_indx = self._config['LABELS'].index(obj['name'])
 
-                        center_w = (obj['xmax'] - obj['xmin']) / (
-                                    float(self._config['IMAGE_W']) / self._config['GRID_W'])
-                        center_h = (obj['ymax'] - obj['ymin']) / (
-                                    float(self._config['IMAGE_H']) / self._config['GRID_H'])
+                        obj_w = (obj['xmax'] - obj['xmin']) / scale_w
+                        obj_h = (obj['ymax'] - obj['ymin']) / scale_h
 
-                        box = [center_x, center_y, center_w, center_h]
+                        box = [obj_center_x, obj_center_y, obj_w, obj_h]
 
                         # find the anchor that best predicts this box
-                        best_anchor = -1
+                        # TODO: check f this part below is working correctly
+                        best_anchor_idx = -1
                         max_iou = -1
 
-                        shifted_box = BoundBox(0, 0, center_w, center_h)
+                        shifted_box = BoundBox(0, 0, obj_w, obj_h)
 
                         for i in range(len(self._anchors)):
                             anchor = self._anchors[i]
                             iou = bbox_iou(shifted_box, anchor)
 
                             if max_iou < iou:
-                                best_anchor = i
+                                best_anchor_idx = i
                                 max_iou = iou
 
                         # assign ground truth x, y, w, h, confidence and class probs to y_batch
-                        y_batch[instance_count, grid_y, grid_x, best_anchor, 0:4] = box
-                        y_batch[instance_count, grid_y, grid_x, best_anchor, 4] = 1.
-                        y_batch[instance_count, grid_y, grid_x, best_anchor, 5 + obj_indx] = 1
+                        self._change_obj_position(y_batch, anchors_populated_map,
+                                                  [instance_count, obj_grid_y, obj_grid_x, best_anchor_idx, obj_indx],
+                                                  box, max_iou)
 
             # assign input image to x_batch
             if self._norm is not None:
@@ -311,6 +314,24 @@ class BatchGenerator(Sequence):
             instance_count += 1
 
         return x_batch, y_batch
+
+    def _change_obj_position(self, y_batch, anchors_map, idx, box, iou):
+
+        bkp_box = y_batch[idx[0], idx[1], idx[2], idx[3], 0:4].copy()
+        anchors_map[idx[0], idx[1], idx[2], idx[3]] = iou
+        y_batch[idx[0], idx[1], idx[2], idx[3], 0:4] = box
+        y_batch[idx[0], idx[1], idx[2], idx[3], 4] = 1.
+        y_batch[idx[0], idx[1], idx[2], idx[3], 5:] = 0  # clear old values
+        y_batch[idx[0], idx[1], idx[2], idx[3], 4 + 1 + idx[4]] = 1
+
+        shifted_box = BoundBox(0, 0, bkp_box[2], bkp_box[3])
+
+        for i in range(len(self._anchors)):
+            anchor = self._anchors[i]
+            iou = bbox_iou(shifted_box, anchor)
+            if iou > anchors_map[idx[0], idx[1], idx[2], i]:
+                self._change_obj_position(y_batch, anchors_map, [idx[0], idx[1], idx[2], i, idx[4]], bkp_box, iou)
+                break
 
     def on_epoch_end(self):
         if self._shuffle:
@@ -360,7 +381,7 @@ class BatchGenerator(Sequence):
                 filtered_objs.append(obj)
             all_objs = filtered_objs
 
-        # resize the image to standard size
+            # resize the image to standard size
         image = cv2.resize(image, (self._config['IMAGE_W'], self._config['IMAGE_H']))
         if self._config['IMAGE_C'] == 1:
             image = image[..., np.newaxis]
@@ -375,4 +396,5 @@ class BatchGenerator(Sequence):
             for attr in ['ymin', 'ymax']:
                 obj[attr] = int(obj[attr] * float(self._config['IMAGE_H']) / h)
                 obj[attr] = max(min(obj[attr], self._config['IMAGE_H']), 0)
+
         return image, all_objs

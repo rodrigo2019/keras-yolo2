@@ -7,9 +7,8 @@ import sys
 #sys.path.append("path/to/backend")
 sys.path.append("..")
 from keras_yolov2.backend import BaseFeatureExtractor
-from keras.models import Model
-from keras.layers import Conv2D, Input, MaxPooling2D, BatchNormalization
-from keras.layers.advanced_activations import LeakyReLU
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Conv2D, Input, MaxPooling2D, BatchNormalization, LeakyReLU
 
 
 class SuperTinyYoloFeature(BaseFeatureExtractor):

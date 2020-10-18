@@ -1,11 +1,10 @@
 #! /usr/bin/env python3
-from keras_yolov2.utils import draw_boxes, get_session
+from keras_yolov2.utils import draw_boxes, enable_memory_growth
 from keras_yolov2.frontend import YOLO
 from keras_yolov2.utils import list_images
 from tqdm import tqdm
 import numpy as np
 import argparse
-import keras
 import json
 import cv2
 import os
@@ -48,7 +47,7 @@ def _main_(args):
     use_camera = args.real_time
 
     videos_format = [".mp4", "avi"]
-    keras.backend.tensorflow_backend.set_session(get_session())
+    enable_memory_growth()
 
     with open(config_path) as config_buffer:
         config = json.load(config_buffer)

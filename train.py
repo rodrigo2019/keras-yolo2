@@ -1,13 +1,15 @@
 #! /usr/bin/env python3
 
-from keras_yolov2.preprocessing import parse_annotation_xml, parse_annotation_csv
-from keras_yolov2.utils import get_session, create_backup
-from keras_yolov2.frontend import YOLO
-import numpy as np
 import argparse
-import keras
 import json
 import os
+
+import numpy as np
+from tensorflow import keras
+
+from keras_yolov2.frontend import YOLO
+from keras_yolov2.preprocessing import parse_annotation_xml, parse_annotation_csv
+from keras_yolov2.utils import create_backup, enable_memory_growth
 
 argparser = argparse.ArgumentParser(
     description='Train and validate YOLO_v2 model on any dataset')
@@ -21,8 +23,7 @@ argparser.add_argument(
 
 def _main_(args):
     config_path = args.conf
-
-    keras.backend.tensorflow_backend.set_session(get_session())
+    enable_memory_growth()
 
     with open(config_path) as config_buffer:
         config = json.loads(config_buffer.read())
@@ -62,10 +63,11 @@ def _main_(args):
         else:
             split = True
     else:
-        raise ValueError("'parser_annotations_type' must be 'xml' or 'csv' not {}.".format(config['parser_annotations_type']))
+        raise ValueError(
+            "'parser_annotations_type' must be 'xml' or 'csv' not {}.".format(config['parser_annotations_type']))
 
     if split:
-        train_valid_split = int(0.8*len(train_imgs))
+        train_valid_split = int(0.8 * len(train_imgs))
         np.random.shuffle(train_imgs)
 
         valid_imgs = train_imgs[train_valid_split:]
@@ -129,7 +131,8 @@ def _main_(args):
                tb_logdir=config['train']['tensorboard_log_dir'],
                train_generator_callback=config['train']['callback'],
                iou_threshold=config['valid']['iou_threshold'],
-               score_threshold=config['valid']['score_threshold'])
+               score_threshold=config['valid']['score_threshold'],
+               cosine_decay=config['train']['cosine_decay'])
 
 
 if __name__ == '__main__':

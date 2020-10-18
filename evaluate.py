@@ -1,11 +1,10 @@
 #! /usr/bin/env python3
 from keras_yolov2.preprocessing import parse_annotation_xml, parse_annotation_csv
 from keras_yolov2.preprocessing import BatchGenerator
-from keras_yolov2.utils import get_session
+from keras_yolov2.utils import enable_memory_growth
 from keras_yolov2.frontend import YOLO
 from keras_yolov2.map_evaluation import MapEvaluation
 import argparse
-import keras
 import json
 import os
 
@@ -36,7 +35,7 @@ def _main_(args):
     config_path = args.conf
     weights_path = args.weights
     
-    keras.backend.tensorflow_backend.set_session(get_session())
+    enable_memory_growth()
 
     with open(config_path) as config_buffer:    
         config = json.loads(config_buffer.read())
