@@ -40,13 +40,12 @@ Dataset => http://cvrr.ucsd.edu/vivachallenge/index.php/hands/hand-detection/
 
 ### 0. Requirement
 
-python 2.7 or python 3.x
+python >= 3.5
 
 - opencv
 - tqdm
-- keras==2.2.4
 - imgaug
-- tensorflow==1.14.0
+- tensorflow==2.3.0
 
 ### 1. Data preparation
 Download the Raccoon dataset from from https://github.com/experiencor/raccoon_dataset.
