@@ -67,10 +67,10 @@ class YoloLoss(object):
 
     @staticmethod
     def _generate_yolo_grid(batch_size, grid_size, nb_box):
-        cell_x = tf.to_float(tf.reshape(tf.tile(tf.range(grid_size[0]), [grid_size[1]]), (1, grid_size[1], grid_size[0],
-                                                                                          1, 1)))
-        cell_y = tf.to_float(tf.reshape(tf.tile(tf.range(grid_size[1]), [grid_size[0]]), (1, grid_size[0], grid_size[1],
-                                                                                          1, 1)))
+        cell_x = tf.cast(tf.reshape(tf.tile(tf.range(grid_size[0]), [grid_size[1]]), (1, grid_size[1], grid_size[0],
+                                                                                      1, 1)), tf.float32)
+        cell_y = tf.cast(tf.reshape(tf.tile(tf.range(grid_size[1]), [grid_size[0]]), (1, grid_size[0], grid_size[1],
+                                                                                      1, 1)), tf.float32)
         cell_y = tf.transpose(cell_y, (0, 2, 1, 3, 4))
 
         cell_grid = tf.tile(tf.concat([cell_x, cell_y], -1), [batch_size, 1, 1, nb_box, 1])

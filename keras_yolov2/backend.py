@@ -1,5 +1,5 @@
 import tensorflow as tf
-from keras.models import Model
+from tensorflow.keras.models import Model
 from tensorflow.keras.applications import InceptionV3
 from tensorflow.keras.applications.mobilenet import MobileNet
 from tensorflow.keras.applications.resnet50 import ResNet50
@@ -30,7 +30,7 @@ class BaseFeatureExtractor(object):
         raise NotImplementedError("error message")
 
     def get_output_shape(self):
-        return self.feature_extractor.get_output_shape_at(-1)[1:3]
+        return self.feature_extractor.output_shape[1:3]
 
     def extract(self, input_image):
         return self.feature_extractor(input_image)
