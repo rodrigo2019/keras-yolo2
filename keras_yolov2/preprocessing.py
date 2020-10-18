@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from imgaug import augmenters as iaa
 from imgaug.augmentables import BoundingBox, BoundingBoxesOnImage
-from keras.utils import Sequence
+from tensorflow.keras.utils import Sequence
 from tqdm import tqdm
 
 from .utils import BoundBox, bbox_iou
@@ -381,7 +381,7 @@ class BatchGenerator(Sequence):
                 filtered_objs.append(obj)
             all_objs = filtered_objs
 
-                    # resize the image to standard size
+            # resize the image to standard size
         image = cv2.resize(image, (self._config['IMAGE_W'], self._config['IMAGE_H']))
         if self._config['IMAGE_C'] == 1:
             image = image[..., np.newaxis]

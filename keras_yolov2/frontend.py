@@ -1,17 +1,18 @@
-from .yolo_loss import YoloLoss
-from .map_evaluation import MapEvaluation
-from .utils import decode_netout, import_feature_extractor, import_dynamically
-from .preprocessing import BatchGenerator
-from .optimizers import RAdam, Lookahead
-from .cosine_decay import WarmUpCosineDecayScheduler
-from keras.models import Model
-from keras.layers import Reshape, Conv2D, Input
-from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-import numpy as np
-import sys
-import cv2
 import os
+import sys
+
+import cv2
+import numpy as np
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from tensorflow.keras.layers import Reshape, Conv2D, Input
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+
+from .cosine_decay import WarmUpCosineDecayScheduler
+from .map_evaluation import MapEvaluation
+from .preprocessing import BatchGenerator
+from .utils import decode_netout, import_feature_extractor, import_dynamically
+from .yolo_loss import YoloLoss
 
 
 class YOLO(object):
@@ -98,7 +99,6 @@ class YOLO(object):
               train_generator_callback=None,
               iou_threshold=0.5,
               score_threshold=0.5,
-              look_ahead=False,
               cosine_decay=False):
 
         self._batch_size = batch_size
@@ -144,25 +144,17 @@ class YOLO(object):
                                          norm=self._feature_extractor.normalize,
                                          jitter=False)
 
-
         ############################################
         # Compile the model
         ############################################
 
-        # optimizer = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-        optimizer = RAdam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-06)
+        optimizer = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
 
         loss_yolo = YoloLoss(self._anchors, (self._grid_w, self._grid_h), self._batch_size,
                              lambda_coord=coord_scale, lambda_noobj=no_object_scale, lambda_obj=object_scale,
                              lambda_class=class_scale)
         self._model.compile(loss=loss_yolo, optimizer=optimizer)
 
-        # RAdam + Look Ahead = Ranger
-        # https://medium.com/@lessw/new-deep-learning-optimizer-ranger-synergistic-combination-of-radam-lookahead-for-the-best-of-2dc83f79a48d
-        # Insert Look Ahead
-        if look_ahead:
-            lookahead = Lookahead(k=5, alpha=0.5)  # Initialize Lookahead
-            lookahead.inject(self._model)  # add into model
         ############################################
         # Make a few callbacks
         ############################################

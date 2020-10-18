@@ -1,12 +1,11 @@
-from keras.models import Model
 import tensorflow as tf
-from keras.layers import Reshape, Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Flatten, Dense, Lambda
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.merge import concatenate
-from keras.applications.mobilenet import MobileNet
-from keras.applications import InceptionV3
-from keras.applications.vgg16 import VGG16
-from keras.applications.resnet50 import ResNet50
+from keras.models import Model
+from tensorflow.keras.applications import InceptionV3
+from tensorflow.keras.applications.mobilenet import MobileNet
+from tensorflow.keras.applications.resnet50 import ResNet50
+from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow.keras.layers import Activation, Conv2D, Input, MaxPooling2D, BatchNormalization, Lambda, LeakyReLU, \
+    concatenate
 
 base_path = './backend_weights/'  # FIXME :: use environment variables
 
@@ -45,7 +44,7 @@ class FullYoloFeature(BaseFeatureExtractor):
 
         # the function to implement the orgnization layer (thanks to github.com/allanzelener/YAD2K)
         def space_to_depth_x2(x):
-            return tf.space_to_depth(x, block_size=2)
+            return tf.nn.space_to_depth(x, block_size=2)
 
         # Layer 1
         x = Conv2D(32, (3, 3), strides=(1, 1), padding='same', name='conv_1', use_bias=False)(input_image)

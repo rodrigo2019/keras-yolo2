@@ -1,12 +1,14 @@
+import os
+import shutil
+import sys
+from datetime import datetime
+
+import cv2
+import numpy as np
+import tensorflow as tf
+
 from .backend import (TinyYoloFeature, FullYoloFeature, MobileNetFeature, SqueezeNetFeature, Inception3Feature,
                       VGG16Feature, ResNet50Feature, BaseFeatureExtractor)
-from datetime import datetime
-import tensorflow as tf
-import numpy as np
-import shutil
-import cv2
-import sys
-import os
 
 
 class BoundBox:
@@ -93,13 +95,13 @@ def draw_boxes(image, boxes, labels):
         xmax = int(box.xmax * image_w)
         ymax = int(box.ymax * image_h)
 
-        line_width_factor = int(min(image_h, image_w)*0.005)
-        cv2.rectangle(image, (xmin, ymin), (xmax, ymax), colors[box.get_label()], line_width_factor*2)
+        line_width_factor = int(min(image_h, image_w) * 0.005)
+        cv2.rectangle(image, (xmin, ymin), (xmax, ymax), colors[box.get_label()], line_width_factor * 2)
         cv2.putText(image, "{} {:.3f}".format(labels[box.get_label()], box.get_score()),
                     (xmin, ymin - line_width_factor * 3), cv2.FONT_HERSHEY_PLAIN, 2e-3 * min(image_h, image_w),
                     (0, 255, 0), line_width_factor)
-        
-    return image      
+
+    return image
 
 
 def decode_netout(netout, anchors, nb_class, obj_threshold=0.5, nms_threshold=0.3):
@@ -306,10 +308,18 @@ def list_files(base_path, valid_exts="", contains=None):
                 yield image_path
 
 
-def get_session():
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    return tf.Session(config=config)
+def enable_memory_growth():
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
+            print(e)
 
 
 def create_backup(config):
@@ -324,7 +334,7 @@ def create_backup(config):
     if os.path.isdir(path):
         shutil.rmtree(path)
     os.makedirs(path)
-    
+
     shutil.copytree(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."), os.path.join(path, "Keras-yolo2"),
                     ignore=shutil.ignore_patterns(".git"))
     readme_message = ""
