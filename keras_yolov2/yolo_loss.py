@@ -118,7 +118,7 @@ class YoloLoss(object):
     def class_loss(self, y_true, y_pred):
         # TODO: should we use focal loss?
         p_c_pred = K.softmax(y_pred[..., 5:])
-        #TODO: # https://github.com/rodrigo2019/keras_yolo2/issues/25
+        # TODO: # https://github.com/rodrigo2019/keras_yolo2/issues/25
         p_c_true = K.one_hot(K.argmax(y_true[..., 5:], axis=-1), 1)
         loss_class_arg = K.sum(K.square(p_c_true - p_c_pred), axis=-1)
 
