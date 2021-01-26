@@ -35,8 +35,7 @@
         "coord_scale":          1.0,
         "class_scale":          1.0,
 
-        "saved_weights_name":   "../SuperTinyYolo_plateArea32x32.h5",
-        "debug":                false
+        "saved_weights_name":   "../SuperTinyYolo_plateArea32x32.h5"
     },
 
     "valid": {
