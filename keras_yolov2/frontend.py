@@ -107,7 +107,6 @@ class YOLO(object):
         self._coord_scale = coord_scale
         self._class_scale = class_scale
 
-        self._debug = debug
 
         #######################################
         # Make train and validation generators
